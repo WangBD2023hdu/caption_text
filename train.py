@@ -14,7 +14,7 @@ from model import KEHModel, KEHModel_without_know
 from utils.data_utils import construct_edge_image
 from utils.dataset import BaseSet
 from utils.compute_scores import get_metrics, get_four_metrics
-from utils.data_utils import PadCollate, PadCollate_without_know
+from utils.data_utils import PadCollate_without_know
 import json
 import re
 from utils.data_utils import seed_everything
@@ -37,9 +37,81 @@ parser.add_argument('-s', '--save', type=str, default='saved model',
                     help="path, path to saved model}")
 parser.add_argument('-o', '--para', type=str, default='parameter.json',
                     help="path, path to json file keeping parameter}")
+parser.add_argument('--patience', type=int, default=3)
+parser.add_argument('--batch_size', type=int, default=32)
+parser.add_argument('--epochs', type=int, default=10)
+parser.add_argument('--max_length', type=int, default=120)
+parser.add_argument('--use_np', type=bool, default=False)
+parser.add_argument('--seed', type=int, default=42)
+parser.add_argument('--weight_decay', type=float, default=0.005)
+parser.add_argument('--lr', type=float, default=2e-5)
+parser.add_argument('--txt_input_dim', type=int, default=768)
+parser.add_argument('--txt_out_size', type=int, default=200)
+parser.add_argument('--img_input_dim', type=int, default=768)
+parser.add_argument('--img_inter_dim', type=int, default=500)
+parser.add_argument('--img_out_dim', type=int, default=200)
+parser.add_argument('--cro_layers', type=int, default=6)
+parser.add_argument('--cro_heads', type=int, default=5)
+parser.add_argument('--cro_drop', type=float, default=0.5)
+parser.add_argument('--txt_gat_layer', type=int, default=2)
+parser.add_argument('--txt_gat_drop', type=float, default=0.5)
+parser.add_argument('--txt_gat_head', type=int, default=2)
+parser.add_argument('--txt_self_loops', type=bool, default=True)
+parser.add_argument('--img_gat_layer', type=int, default=2)
+parser.add_argument('--img_gat_drop', type=float, default=0.5)
+parser.add_argument('--img_gat_head', type=int, default=2)
+parser.add_argument('--img_self_loops', type=bool, default=True)
+parser.add_argument('--img_edge_dim', type=int, default=0)
+parser.add_argument('--img_patch', type=int, default=49)
+parser.add_argument('--lambda', type=int, default=1)
+parser.add_argument('--type_bmco', type=int, default=1)
+parser.add_argument('--knowledge_type', type=int, default=0)
+parser.add_argument('--know_max_length', type=int, default=20)
+parser.add_argument('--know_gat_layer', type=int, default=2)
+parser.add_argument('--know_gat_head', type=int, default=1)
+parser.add_argument('--know_cro_layer', type=int, default=3)
+parser.add_argument('--know_cro_head', type=int, default=5)
+parser.add_argument('--know_cro_type', type=int, default=0)
+parser.add_argument('--visualization', type=bool, default=False)
 args = parser.parse_args()
 with open(args.para) as f:
     parameter = json.load(f)
+parameter["mode"] = args.mode
+parameter["patience"] = args.patience
+parameter["batch_size"] = args.batch_size
+parameter["epochs"] = args.epochs
+parameter["max_length"] = args.max_length
+parameter["use_np"] = args.use_np
+parameter["seed"] = args.seed
+parameter["weight_decay"] = args.weight_decay
+parameter["lr"] = args.lr
+parameter["txt_input_dim"] = args.txt_input_dim
+parameter["txt_out_size"] = args.txt_out_size
+parameter["img_input_dim"] = args.img_input_dim
+parameter["img_inter_dim"] = args.img_inter_dim
+parameter["img_out_dim"] = args.img_out_dim
+parameter["cro_layers"] = args.cro_layers
+parameter["cro_heads"] = args.cro_heads
+parameter["cro_drop"] = args.cro_drop
+parameter["txt_gat_layer"] = args.txt_gat_layer
+parameter["txt_gat_drop"] = args.txt_gat_drop
+parameter["txt_gat_head"] = args.txt_gat_head
+parameter["txt_self_loops"] = args.txt_self_loops
+parameter["img_gat_layer"] = args.img_gat_layer
+parameter["img_gat_drop"] = args.img_gat_drop
+parameter["img_gat_head"] = args.img_gat_head
+parameter["img_self_loops"] = args.img_self_loops
+parameter["img_edge_dim"] = args.img_edge_dim
+parameter["img_patch"] = args.img_patch
+parameter["type_bmco"] = args.type_bmco
+parameter["knowledge_type"] = args.knowledge_type
+parameter["know_max_length"] = args.know_max_length
+parameter["know_gat_layer"] = args.know_gat_layer
+parameter["know_gat_head"] = args.know_gat_head
+parameter["know_cro_layer"] = args.know_cro_layer
+parameter["know_cro_head"] = args.know_cro_head
+parameter["know_cro_type"] = args.know_cro_type
+parameter["visualization"] = args.visualization
 annotation_files = parameter["annotation_files"]
 img_files = parameter["DATA_DIR"]
 use_np = parameter["use_np"]
