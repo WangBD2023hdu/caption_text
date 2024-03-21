@@ -3,7 +3,9 @@ import torch.nn as nn
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence, pad_sequence
 import math
 from utils import L2_norm, cosine_distance
-from transformers import BertModel
+from transformers import RobertaModel
+from transformers import AutoModelForSequenceClassification
+
 from utils.data_utils import pad_tensor
 
 
@@ -28,7 +30,8 @@ class TextEncoder(nn.Module):
         self.linear_ = nn.Linear(self.input_size, self.out_size)
         self.knowledge_type = knowledge_type
         self.know_max_length = know_max_length
-        self.bert_model = BertModel.from_pretrained('bert-base-uncased')
+        self.bert_model = AutoModelForSequenceClassification.from_pretrained('twitter-roberta-base-sentiment-latest')
+        self.bert_model = RobertaModel.from_pretrained('twitter-roberta-base-sentiment-latest')
         # self.bert_model = BertModel.from_pretrained("/home/liuhui/lhgpu/sarcasm/bert/")
 
         self.linear2 = nn.Linear(self.input_size, self.out_size)
@@ -122,8 +125,8 @@ class TextEncoder_without_know(nn.Module):
         self.norm = nn.LayerNorm(self.out_size)
         self.linear = nn.Linear(self.out_size, 1)
         self.linear_ = nn.Linear(self.input_size, self.out_size)
-
-        self.bert_model = BertModel.from_pretrained('bert-base-uncased')
+        # self.bert_model = AutoModelForSequenceClassification.from_pretrained('twitter-roberta-base-sentiment-latest')
+        self.bert_model = RobertaModel.from_pretrained('twitter-roberta-base-sentiment-latest')
 
 
     def forward(self, t1, word_seq, key_padding_mask, lam=1):

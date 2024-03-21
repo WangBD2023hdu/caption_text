@@ -5,7 +5,8 @@ import random
 import numpy as np
 
 from transformers import AutoTokenizer
-
+from transformers import RobertaTokenizerFast
+from transformers import AlbertTokenizer
 
 def read_json(path):
     """
@@ -49,148 +50,6 @@ def pad_tensor(vec, pad, dim):
     return padded_tensor
 
 
-class PadCollate:
-    def __init__(self, img_dim=0, twitter_dim=1, dep_dim=2, label_dim=3, knowledge_dim=4, knowledge_dep_dim=5,
-                 use_np=False, max_know_len=20, knwoledge_type=1):
-        """
-        Args:
-            img_dim (int): dimension for the image bounding boxes
-            embed_dim1 (int): dimension for the matching caption
-            embed_dim2 (int): dimension for the non-matching caption
-            type
-        """
-
-        self.img_dim = img_dim
-        self.twitter = twitter_dim
-        self.dep = dep_dim
-        self.label_dim = label_dim
-
-        self.use_np = use_np
-        self.knowledge_dim = knowledge_dim
-        self.knowledge_dep_dim = knowledge_dep_dim
-        self.max_len_know = max_know_len
-        self.knowledge_type = knwoledge_type
-        # img, twitter, dep, label, knowledge
-        self.tokenizer = AutoTokenizer.from_pretrained('bert-base-cased')
-
-    def pad_collate(self, batch):
-        """
-            A variant of collate_fn that pads according to the longest sequence in a batch of sequences and forms the minibatch
-
-            Args:
-                batch: Tuple. (img, embed_txt, org_seq, org_dep, org_word_len, org_token_len, org_label, org_chunk)
-
-            Returns:
-                xs(batchsize,49, 768): Tensor.
-                embed_batch1(batchsize,L,768): Tensor. L is the max token length of input captions. Padded
-                org_seq(batchsize,number of word): chunk index in Bert token for original caption.
-                mask_batch1: (N,max_word_length). Tensor. key_padding_mask for word(np) for original caption
-                org_token_len(batchsize):list of token length in a minibatch for RNN in text encoder
-                edge_cap1(batchsize,number of edges, 2): list of Tensor.
-                gnn_mask_1(batchsize): Boolean Tensor for orginal caption.
-                np_mask_1(batchsize,max_length1+1): mask during the importance of np and caption
-        """
-
-        xs = list(map(lambda t: t[self.img_dim].clone().detach(), batch))
-        xs = torch.stack(xs)
-        # 获取batch中 token caption 的最大长度
-
-        twitters = list(map(lambda t: t[self.twitter], batch))
-        token_lens = [len(twitter) for twitter in twitters]
-
-        encoded_cap = self.tokenizer(twitters, is_split_into_words=True, return_tensors="pt", truncation=True,
-                                     max_length=100, padding=True)
-        knowledges = list(map(lambda t: t[self.knowledge_dim], batch))
-        real_token_len = [len(knowledge) for knowledge in knowledges]
-        if self.knowledge_type != 1:
-            knowledges_ = []
-            for sample in knowledges:
-                for word in sample:
-                    knowledges_.append([word])
-            knowledges = knowledges_
-
-        encoded_know = self.tokenizer(knowledges, is_split_into_words=True, return_tensors="pt", truncation=True,
-                                          max_length=30, padding=True)
-        # len = 1  fo knwoledge 2,3
-        know_token_lens = [len(knowledge) for knowledge in knowledges]
-        img_patch_lens = [len(img) for img in xs]
-
-        know_word_spans = []
-        know_word_lens = []  # for mask matrix
-        for index_encode, len_token in enumerate(know_token_lens):
-            word_span_ = []
-            if len_token > self.max_len_know:
-                len_token = self.max_len_know
-            for i in range(len_token):
-                word_span = encoded_know[index_encode].word_to_tokens(i)
-                if word_span is not None:
-                    # delete [CLS]
-                    word_span_.append([word_span[0] - 1, word_span[1] - 1])
-            know_word_spans.append(word_span_)
-            know_word_lens.append(len(word_span_))
-        word_spans = []
-        word_len = []
-        for index_encode, len_token in enumerate(token_lens):
-            word_span_ = []
-            for i in range(len_token):
-                word_span = encoded_cap[index_encode].word_to_tokens(i)
-                if word_span is not None:
-                    # delete [CLS]
-                    word_span_.append([word_span[0] - 1, word_span[1] - 1])
-            word_spans.append(word_span_)
-            word_len.append(len(word_span_))
-        # make sure each knowledge is isometric
-        if self.knowledge_type > 1:
-            max_len_know = max(real_token_len)
-        else:
-            max_len_know = self.max_len_know
-
-        # max_len_know = max(know_word_lens)
-        max_len1 = max(word_len)
-        max_len_img = max(img_patch_lens)
-        # mask矩阵是相对于word token的  key_padding_mask for computing the importance of each word in txt_encoder and
-        # interaction modules
-        if self.knowledge_type == 1:
-            mask_batch_know = construct_mask_text(know_word_lens, max_len_know)
-        else:
-            mask_batch_know = construct_mask_text(real_token_len, max_len_know)
-
-        mask_batch_img = construct_mask_text(img_patch_lens, max_len_img)
-        mask_batch1 = construct_mask_text(word_len, max_len1)
-
-        deps_know = [x[self.knowledge_dep_dim] for x in batch]
-        deps1 = [x[self.dep] for x in batch]
-
-        deps_know_ = []
-        deps1_ = []
-        # to avoid index out of range
-        for dep in deps_know:
-            deps_know_.append([d for d in dep if d[0] < max_len_know and d[1] < max_len_know])
-        for dep in deps1:
-            deps1_.append([d for d in dep if d[0] < max_len1 and d[1] < max_len1])
-        # chunk index
-
-        if self.use_np:
-            org_chunk = list(map(lambda t: torch.tensor(t[self.chunk], dtype=torch.long), batch))
-        else:
-            org_chunk = [torch.arange(i, dtype=torch.long) for i in word_len]
-
-
-        labels = torch.tensor(list(map(lambda t: t[self.label_dim], batch)), dtype=torch.long)
-        edge_cap1, gnn_mask_1, np_mask_1 = construct_edge_text(deps=deps1_, max_length=max_len1, use_np=self.use_np,
-                                                               chunk=org_chunk)
-        # np_mask_know in useless
-        edge_cap_know, gnn_mask_know = construct_edge_know(deps=deps_know_)
-
-        # for caption knowledge
-        return xs, encoded_cap, word_spans, word_len, mask_batch1, edge_cap1, gnn_mask_1, np_mask_1, \
-               labels, \
-               encoded_know, know_word_spans, mask_batch_know, edge_cap_know, gnn_mask_know, mask_batch_img
-
-    def __call__(self, batch):
-        return self.pad_collate(batch)
-
-
 class PadCollate_without_know:
     def __init__(self, img_dim=0, twitter_dim=1, dep_dim=2, label_dim=3, chunk_dim=4, use_np=False):
         """
@@ -210,7 +69,10 @@ class PadCollate_without_know:
         self.use_np = use_np
         # img, text_emb, text_seq, dep, word_len, token_len, label
 
-        self.tokenizer = AutoTokenizer.from_pretrained('bert-base-cased')
+        # self.tokenizer = AutoTokenizer.from_pretrained('bert-base-cased')
+        # 根据论文 https://doi.org/10.1016/j.inffus.2023.101921 采用Albert取得sota效果
+        self.tokenizer = RobertaTokenizerFast.from_pretrained('twitter-roberta-base-sentiment-latest')
+        self.tokenizer.add_prefix_space = True
 
     def pad_collate(self, batch):
         """
@@ -238,6 +100,8 @@ class PadCollate_without_know:
         encoded_cap = self.tokenizer(twitters, is_split_into_words=True, return_tensors="pt", truncation=True,
                                      max_length=100, padding=True)
 
+        # TODO 上服务器运行错误需检查该段代码
+        # 无错误版本
         word_spans = []
         word_len = []
         for index_encode, len_token in enumerate(token_lens):
@@ -249,6 +113,23 @@ class PadCollate_without_know:
                     word_span_.append([word_span[0] - 1, word_span[1] - 1])
             word_spans.append(word_span_)
             word_len.append(len(word_span_))
+
+        # TODO 上服务器运行错误需检查该段代码
+        # word_spans = []
+        # word_len = []
+        # print(len(twitters))
+        # print(twitters[2])
+        # for idx in range(len(twitters)):
+        #     word_span_ = []
+        #     i = 0
+        #     for word in twitters[idx]:
+        #         tokens = self.tokenizer(word)['input_ids']
+        #         if len(tokens) <= 2:
+        #             continue
+        #         word_span_.append((i, i + len(tokens) - 2))
+        #         i = i + len(tokens) - 2
+        #     word_spans.append(word_span_)
+        #     word_len.append(len(word_span_))
 
         max_len1 = max(word_len)
         # mask矩阵是相对于word token的  key_padding_mask for computing the importance of each word in txt_encoder and
