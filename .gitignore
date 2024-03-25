@@ -1,0 +1,8 @@
+__pycache__
+/albert/
+/result/
+/roberta/
+/saved_model path/
+/twitter/
+/twitter-roberta-base-sentiment-latest/
+/nohup.out/

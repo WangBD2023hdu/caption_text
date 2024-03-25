@@ -185,7 +185,6 @@ def construct_mask_text(seq_len, max_length):
                         torch.ones(max_length - len, dtype=bool)]) if len <= max_length else torch.zeros(max_length,
                                                                                                          dtype=bool) for
              len in seq_len])
-
     return mask
 
 
@@ -341,3 +340,7 @@ def seed_everything(seed: int):
     np.random.seed(seed)
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    np.random.seed(seed)
+

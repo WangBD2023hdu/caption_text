@@ -76,42 +76,42 @@ parser.add_argument('--visualization', type=bool, default=False)
 args = parser.parse_args()
 with open(args.para) as f:
     parameter = json.load(f)
-parameter["mode"] = args.mode
-parameter["patience"] = args.patience
-parameter["batch_size"] = args.batch_size
-parameter["epochs"] = args.epochs
-parameter["max_length"] = args.max_length
-parameter["use_np"] = args.use_np
-parameter["seed"] = args.seed
-parameter["weight_decay"] = args.weight_decay
-parameter["lr"] = args.lr
-parameter["txt_input_dim"] = args.txt_input_dim
-parameter["txt_out_size"] = args.txt_out_size
-parameter["img_input_dim"] = args.img_input_dim
-parameter["img_inter_dim"] = args.img_inter_dim
-parameter["img_out_dim"] = args.img_out_dim
-parameter["cro_layers"] = args.cro_layers
-parameter["cro_heads"] = args.cro_heads
-parameter["cro_drop"] = args.cro_drop
-parameter["txt_gat_layer"] = args.txt_gat_layer
-parameter["txt_gat_drop"] = args.txt_gat_drop
-parameter["txt_gat_head"] = args.txt_gat_head
-parameter["txt_self_loops"] = args.txt_self_loops
-parameter["img_gat_layer"] = args.img_gat_layer
-parameter["img_gat_drop"] = args.img_gat_drop
-parameter["img_gat_head"] = args.img_gat_head
-parameter["img_self_loops"] = args.img_self_loops
-parameter["img_edge_dim"] = args.img_edge_dim
-parameter["img_patch"] = args.img_patch
-parameter["type_bmco"] = args.type_bmco
-parameter["knowledge_type"] = args.knowledge_type
-parameter["know_max_length"] = args.know_max_length
-parameter["know_gat_layer"] = args.know_gat_layer
-parameter["know_gat_head"] = args.know_gat_head
-parameter["know_cro_layer"] = args.know_cro_layer
-parameter["know_cro_head"] = args.know_cro_head
-parameter["know_cro_type"] = args.know_cro_type
-parameter["visualization"] = args.visualization
+# parameter["mode"] = args.mode
+# parameter["patience"] = args.patience
+# parameter["batch_size"] = args.batch_size
+# parameter["epochs"] = args.epochs
+# parameter["max_length"] = args.max_length
+# parameter["use_np"] = args.use_np
+# parameter["seed"] = args.seed
+# parameter["weight_decay"] = args.weight_decay
+# parameter["lr"] = args.lr
+# parameter["txt_input_dim"] = args.txt_input_dim
+# parameter["txt_out_size"] = args.txt_out_size
+# parameter["img_input_dim"] = args.img_input_dim
+# parameter["img_inter_dim"] = args.img_inter_dim
+# parameter["img_out_dim"] = args.img_out_dim
+# parameter["cro_layers"] = args.cro_layers
+# parameter["cro_heads"] = args.cro_heads
+# parameter["cro_drop"] = args.cro_drop
+# parameter["txt_gat_layer"] = args.txt_gat_layer
+# parameter["txt_gat_drop"] = args.txt_gat_drop
+# parameter["txt_gat_head"] = args.txt_gat_head
+# parameter["txt_self_loops"] = args.txt_self_loops
+# parameter["img_gat_layer"] = args.img_gat_layer
+# parameter["img_gat_drop"] = args.img_gat_drop
+# parameter["img_gat_head"] = args.img_gat_head
+# parameter["img_self_loops"] = args.img_self_loops
+# parameter["img_edge_dim"] = args.img_edge_dim
+# parameter["img_patch"] = args.img_patch
+# parameter["type_bmco"] = args.type_bmco
+# parameter["knowledge_type"] = args.knowledge_type
+# parameter["know_max_length"] = args.know_max_length
+# parameter["know_gat_layer"] = args.know_gat_layer
+# parameter["know_gat_head"] = args.know_gat_head
+# parameter["know_cro_layer"] = args.know_cro_layer
+# parameter["know_cro_head"] = args.know_cro_head
+# parameter["know_cro_type"] = args.know_cro_type
+# parameter["visualization"] = args.visualization
 annotation_files = parameter["annotation_files"]
 img_files = parameter["DATA_DIR"]
 use_np = parameter["use_np"]
@@ -229,12 +229,12 @@ def train_model(epoch, train_loader):
             embed_batch1 = {k: v.to(device) for k, v in embed_batch1.items()}
             batch = len(img_batch)
             with torch.set_grad_enabled(True):
-                y = model(imgs=img_batch.cuda(), texts=embed_batch1, mask_batch=mask_batch1.cuda(),
+                y, loss_contra = model(imgs=img_batch.cuda(), texts=embed_batch1, mask_batch=mask_batch1.cuda(),
                           img_edge_index=img_edge_index,
                           t1_word_seq=org_seq, txt_edge_index=edge_cap1, gnn_mask=gnn_mask_1.cuda(),
                           np_mask=np_mask_1.cuda(), img_edge_attr=None, key_padding_mask_img=key_padding_mask_img)
 
-                loss = cross_entropy_loss(y, labels.cuda())
+                loss = cross_entropy_loss(y, labels.cuda()) + loss_contra
                 loss.backward()
                 train_loss += float(loss.detach().item())
                 optimizer.step()
@@ -270,7 +270,7 @@ def eval_validation_loss(val_loader):
                             key_padding_mask_img) in enumerate(tqdm(val_loader)):
                 embed_batch1 = {k: v.to(device) for k, v in embed_batch1.items()}
                 encoded_know = {k: v.to(device) for k, v in encoded_know.items()}
-                y = model(imgs=img_batch.cuda(), texts=embed_batch1, mask_batch=mask_batch1.cuda(),
+                y, loss_contra = model(imgs=img_batch.cuda(), texts=embed_batch1, mask_batch=mask_batch1.cuda(),
                           img_edge_index=img_edge_index,
                           t1_word_seq=org_seq, txt_edge_index=edge_cap1, gnn_mask=gnn_mask_1.cuda(),
                           np_mask=np_mask_1.cuda(), encoded_know=encoded_know, know_word_spans=know_word_spans,
@@ -288,7 +288,7 @@ def eval_validation_loss(val_loader):
             for batch_idx, (img_batch, embed_batch1, org_seq, org_word_len, mask_batch1,
                             edge_cap1, gnn_mask_1, np_mask_1, labels, key_padding_mask_img) in enumerate(tqdm(val_loader)):
                 embed_batch1 = {k: v.to(device) for k, v in embed_batch1.items()}
-                y = model(imgs=img_batch.cuda(), texts=embed_batch1, mask_batch=mask_batch1.cuda(),
+                y, loss_contra = model(imgs=img_batch.cuda(), texts=embed_batch1, mask_batch=mask_batch1.cuda(),
                           img_edge_index=img_edge_index,
                           t1_word_seq=org_seq, txt_edge_index=edge_cap1, gnn_mask=gnn_mask_1.cuda(),
                           np_mask=np_mask_1.cuda(), img_edge_attr=None, key_padding_mask_img=key_padding_mask_img)
@@ -350,7 +350,7 @@ def evaluate_model(epoch, val_loader):
             for batch_idx, (img_batch, embed_batch1, org_seq, org_word_len, mask_batch1,
                             edge_cap1, gnn_mask_1, np_mask_1, labels, key_padding_mask_img) in enumerate(tqdm(val_loader)):
                 embed_batch1 = {k: v.to(device) for k, v in embed_batch1.items()}
-                y = model(imgs=img_batch.cuda(), texts=embed_batch1, mask_batch=mask_batch1.cuda(),
+                y, loss_contra = model(imgs=img_batch.cuda(), texts=embed_batch1, mask_batch=mask_batch1.cuda(),
                           img_edge_index=img_edge_index,
                           t1_word_seq=org_seq, txt_edge_index=edge_cap1, gnn_mask=gnn_mask_1.cuda(),
                           np_mask=np_mask_1.cuda(), img_edge_attr=None, key_padding_mask_img=key_padding_mask_img)
@@ -417,7 +417,7 @@ def evaluate_model_test(epoch, test_loader):
                             edge_cap1, gnn_mask_1, np_mask_1, labels, key_padding_mask_img) in enumerate(tqdm(test_loader)):
                 embed_batch1 = {k: v.to(device) for k, v in embed_batch1.items()}
                 with torch.set_grad_enabled(True):
-                    y = model(imgs=img_batch.cuda(), texts=embed_batch1, mask_batch=mask_batch1.cuda(),
+                    y, loss_contra = model(imgs=img_batch.cuda(), texts=embed_batch1, mask_batch=mask_batch1.cuda(),
                               img_edge_index=img_edge_index,
                               t1_word_seq=org_seq, txt_edge_index=edge_cap1, gnn_mask=gnn_mask_1.cuda(),
                               np_mask=np_mask_1.cuda(), img_edge_attr=None, key_padding_mask_img=key_padding_mask_img)
@@ -539,12 +539,13 @@ def main():
             annotation_train = os.path.join(annotation_files, "trainknow_dep.json")
             annotation_val = os.path.join(annotation_files, "valknow_dep.json")
             annotation_test = os.path.join(annotation_files, "testknow_dep.json")
-        img_train = os.path.join(img_files, "train_B32.pt")
-        img_val = os.path.join(img_files, "val_B32.pt")
-        img_test = os.path.join(img_files, "test_B32.pt")
-        # img_train = os.path.join(img_files, "train_152.pt")
-        # img_val = os.path.join(img_files, "val_152.pt")
-        # img_test = os.path.join(img_files, "test_152.pt")
+        # img_train = os.path.join(img_files, "train_B32.pt")
+        # img_val = os.path.join(img_files, "val_B32.pt")
+        # img_test = os.path.join(img_files, "test_B32.pt")
+        # 因为文件过大 训练集单独加载每个样本图像
+        img_train = os.path.join(img_files, "train_152_4.pt")
+        img_val = os.path.join(img_files, "val_152_4.pt")
+        img_test = os.path.join(img_files, "test_152_4.pt")
         train_dataset = BaseSet(type="train", max_length=parameter["max_length"], text_path=annotation_train,
                                 use_np=use_np, img_path=img_train,
                                 knowledge=knowledge_type)
@@ -577,7 +578,7 @@ def main():
                                     shuffle=True,
                                     collate_fn=PadCollate_without_know())
             print("validation dataset has been loaded successful!")
-            test_loader = DataLoader(dataset=test_dataset, batch_size=parameter["batch_size"], num_workers=4,
+            test_loader = DataLoader(dataset=test_dataset, batch_size=16, num_workers=4,
                                      shuffle=True,
                                      collate_fn=PadCollate_without_know())
             print("test dataset has been loaded successful!")

@@ -1,6 +1,8 @@
 import torch
 from torch.utils.data import Dataset
 import json
+import os
+
 
 class BaseSet(Dataset):
     def __init__(self, type="train", max_length=100, text_path=None, use_np=False, img_path=None, knowledge=0):
@@ -21,6 +23,7 @@ class BaseSet(Dataset):
         self.use_np = use_np
         with open(self.text_path) as f:
             self.dataset = json.load(f)
+        # if self.type != "train":
         self.img_set = torch.load(self.img_path)
         self.knowledge = int(knowledge)
 
@@ -59,7 +62,12 @@ class BaseSet(Dataset):
         else:
             twitter = text["token_cap"]
             dep = text["token_dep"]
-
+        # if self.type == "train":
+        #     #img = torch.load(os.path.join("/home/wbd/source_code/HKEmodel/twitter/img_emb/img_split", f"{index}.pt"))
+        #     img = torch.ones(49, 768)
+        # else:
+        #     #img = self.img_set[index]
+        #     img = torch.ones(49, 768)
         img = self.img_set[index]
         if self.knowledge == 0:
             return img, twitter, dep, label

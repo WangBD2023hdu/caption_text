@@ -220,6 +220,7 @@ class KEHModel(nn.Module):
             y: (N, 2) the similarity score of original caption and image.
 
         """
+
         imgs, pv = self.img_encoder(imgs, lam=self.lam)
         texts, score, encoded_know, score_know = self.txt_encoder(t1=texts, word_seq=t1_word_seq,
                                                                   key_padding_mask=mask_batch,
@@ -259,6 +260,48 @@ class KEHModel(nn.Module):
         else:
             return y
 
+
+class ContrastKnow(nn.Module):
+
+    def __init__(self, txt_input_dim=768, img_input_dim=768):
+        super(ContrastKnow, self).__init__()
+        self.know_txt = nn.ParameterList([nn.Parameter(torch.randn(txt_input_dim, txt_input_dim)), nn.Parameter(torch.randn(txt_input_dim, txt_input_dim))])
+        self.know_imgs = nn.ParameterList([nn.Parameter(torch.randn(img_input_dim, img_input_dim)), nn.Parameter(torch.randn(img_input_dim, img_input_dim))])
+        self.tanh = nn.Tanh()
+    def forward(self, imgs, texts):
+        img_pos = torch.matmul(imgs, self.know_imgs[0])
+        img_neg = torch.matmul(imgs, self.know_imgs[1])
+        txt_pos = torch.matmul(texts, self.know_txt[0])
+        txt_neg = torch.matmul(texts, self.know_txt[1])
+        img_neg = self.tanh(img_neg)
+        img_pos = self.tanh(img_pos)
+        txt_pos = self.tanh(txt_pos)
+        txt_neg = self.tanh(txt_neg)
+        return img_pos, img_neg, txt_pos, txt_neg
+
+
+def contrastive_loss(embeddings1, embeddings2, labels, margin=1.0):
+    """
+    计算对比损失函数
+
+    Args:
+    - embeddings1: 第一个样本的嵌入表示，shape为(batch_size, token_length, hidden_size)
+    - embeddings2: 第二个样本的嵌入表示，shape为(batch_size, token_length, hidden_size)
+    - labels: 标签，1表示相似对，0表示不相似对，shape为(batch_size,)
+    - margin: 边界值，控制相似对和不相似对之间的距离，默认为1.0
+
+    Returns:
+    - loss: 对比损失
+    """
+
+    # 计算余弦相似度
+    sim = F.cosine_similarity(embeddings1, embeddings2, dim=-1)
+
+    # 对比损失计算
+    loss = torch.mean((1 - labels) * torch.pow(sim, 2) +
+                      labels * torch.pow(torch.clamp(margin - sim, min=0.0), 2))
+
+    return loss
 
 class KEHModel_without_know(nn.Module):
     """
@@ -304,6 +347,13 @@ class KEHModel_without_know(nn.Module):
             self.img_gat_head = self.txt_gat_head
 
         self.img_patch = img_patch
+        # 对比学习然后融合
+        self.contrast = ContrastKnow(txt_input_dim=self.txt_out_size, img_input_dim=self.img_out_dim)
+        # 融合
+        self.tanh = nn.Tanh()
+        self.linear_txt = nn.Linear(2 * self.txt_out_size, self.txt_out_size)
+        self.linear_img = nn.Linear(2 * self.img_out_dim, self.img_out_dim)
+        # 对比损失函数
 
         self.txt_encoder = TextEncoder_without_know(input_size=self.txt_input_dim, out_size=self.txt_out_size)
 
@@ -348,6 +398,10 @@ class KEHModel_without_know(nn.Module):
         imgs, pv = self.img_encoder(imgs, lam=self.lam)
         texts, score = self.txt_encoder(t1=texts, word_seq=t1_word_seq,
                                         key_padding_mask=mask_batch, lam=self.lam)
+        img_pos, img_neg, txt_pos, txt_neg = self.contrast(imgs=imgs, texts=texts)
+        loss = contrastive_loss(img_pos, img_neg, 0) + contrastive_loss(txt_pos, txt_neg, 0)
+        texts = self.tanh(self.linear_txt(torch.cat([txt_pos, txt_neg], dim=2)))
+        imgs = self.tanh(self.linear_img(torch.cat([img_pos, img_neg], dim=2)))
 
         imgs, texts = self.interaction(images=imgs, texts=texts, key_padding_mask=mask_batch,
                                        key_padding_mask_img=key_padding_mask_img)
@@ -368,4 +422,8 @@ class KEHModel_without_know(nn.Module):
         if self.visulization:
             return y, a, pv
         else:
-            return y
+            return y, loss
+
+
+
+
