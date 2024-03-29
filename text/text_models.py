@@ -127,7 +127,7 @@ class TextEncoder_without_know(nn.Module):
         self.linear_ = nn.Linear(self.input_size, self.out_size)
         # self.bert_model = AutoModelForSequenceClassification.from_pretrained('twitter-roberta-base-sentiment-latest')
         self.bert_model = RobertaModel.from_pretrained('twitter-roberta-base-sentiment-latest')
-
+        self.gru = nn.GRU(self.input_size, self.out_size, num_layers=2, batch_first=True, bidirectional=False)
 
     def forward(self, t1, word_seq, key_padding_mask, lam=1):
         """
@@ -155,6 +155,7 @@ class TextEncoder_without_know(nn.Module):
 
         # (N,L,D)
         t1 = pad_sequence(captions, batch_first=True).cuda()
+        out, _ = self.gru(t1)
         t1 = self.norm(self.linear_(t1))
         # get each word importance
         # (N,L)
@@ -164,4 +165,4 @@ class TextEncoder_without_know(nn.Module):
         # (N, L, D)
         score = nn.Softmax(dim=1)(score*lam).unsqueeze(2).repeat((1,1,self.out_size))
 
-        return t1, score
+        return t1, out
