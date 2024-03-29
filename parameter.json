@@ -1,6 +1,6 @@
 {
   "BASE_DIR" : "/home/wbd/source_code/base_roberta_twitter",
-  "DATA_DIR" : "/home/wbd/source_code/HKEmodel/twitter/img_emb",
+  "DATA_DIR" : "/home/wbd/source_code/base_roberta_twitter/twitter/img_emb",
   "TARGET_DIR" : "/home/wbd/source_code/base_roberta_twitter/result",
   "annotation_files" : "/home/wbd/source_code/base_roberta_twitter/twitter/dataset_text",
   "model_name" : "KEHM",
@@ -19,8 +19,8 @@
   "txt_input_dim" : 768,
   "txt_out_size" : 200,
 
-  "img_input_dim" : 2048,
-  "img_inter_dim" : 768,
+  "img_input_dim" : 768,
+  "img_inter_dim" : 300,
   "img_out_dim" : 200,
 
   "cro_layers" : 10,
@@ -36,7 +36,7 @@
   "img_gat_head" : 4,
   "img_self_loops" : true,
   "img_edge_dim" : 0,
-  "img_patch" : 16,
+  "img_patch" : 49,
 
   "lambda" :1,
   "type_bmco" : 1,

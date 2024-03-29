@@ -10,7 +10,7 @@ import torch
 from torch.nn import CrossEntropyLoss
 import numpy as np
 
-from model import KEHModel, KEHModel_without_know
+from model import KEHModel_without_know
 from utils.data_utils import construct_edge_image
 from utils.dataset import BaseSet
 from utils.compute_scores import get_metrics, get_four_metrics
@@ -115,54 +115,29 @@ with open(args.para) as f:
 annotation_files = parameter["annotation_files"]
 img_files = parameter["DATA_DIR"]
 use_np = parameter["use_np"]
-knowledge_type = parameter["knowledge_type"]
-if knowledge_type > 0:
-    model = KEHModel(txt_input_dim=parameter["txt_input_dim"], txt_out_size=parameter["txt_out_size"],
-                     img_input_dim=parameter["img_input_dim"],
-                     img_inter_dim=parameter["img_inter_dim"],
-                     img_out_dim=parameter["img_out_dim"], cro_layers=parameter["cro_layers"],
-                     cro_heads=parameter["cro_heads"], cro_drop=parameter["cro_drop"],
-                     txt_gat_layer=parameter["txt_gat_layer"], txt_gat_drop=parameter["txt_gat_drop"],
-                     txt_gat_head=parameter["txt_gat_head"],
-                     txt_self_loops=parameter["txt_self_loops"], img_gat_layer=parameter["img_gat_layer"],
-                     img_gat_drop=parameter["img_gat_drop"],
-                     img_gat_head=parameter["img_gat_head"], img_self_loops=parameter["img_self_loops"],
-                     img_edge_dim=parameter["img_edge_dim"],
-                     img_patch=parameter["img_patch"], lam=parameter["lambda"], type_bmco=parameter["type_bmco"],
-                     knowledge_type=knowledge_type,
-                     know_max_length=parameter["know_max_length"], know_gat_layer=parameter["know_gat_layer"],
-                     know_gat_head=parameter["know_gat_head"],
-                     know_cro_layer=parameter["know_cro_layer"], know_cro_head=parameter["know_cro_head"],
-                     know_cro_type=parameter["know_cro_type"], visualization=parameter["visualization"])
-
-    print("Image Encoder", sum(p.numel() for p in model.img_encoder.parameters() if p.requires_grad))
-    print("Text Encoder", sum(p.numel() for p in model.txt_encoder.parameters() if p.requires_grad))
-    print("Interaction", sum(p.numel() for p in model.interaction.parameters() if p.requires_grad))
-    print("Interaction with Knowledge", sum(p.numel() for p in model.interaction_know.parameters() if p.requires_grad))
-    print("Alignment", sum(p.numel() for p in model.alignment.parameters() if p.requires_grad))
-    print("Alignment with Knowledge", sum(p.numel() for p in model.alignment_know.parameters() if p.requires_grad))
-else:
-    model = KEHModel_without_know(txt_input_dim=parameter["txt_input_dim"], txt_out_size=parameter["txt_out_size"],
-                                  img_input_dim=parameter["img_input_dim"],
-                                  img_inter_dim=parameter["img_inter_dim"],
-                                  img_out_dim=parameter["img_out_dim"], cro_layers=parameter["cro_layers"],
-                                  cro_heads=parameter["cro_heads"], cro_drop=parameter["cro_drop"],
-                                  txt_gat_layer=parameter["txt_gat_layer"], txt_gat_drop=parameter["txt_gat_drop"],
-                                  txt_gat_head=parameter["txt_gat_head"],
-                                  txt_self_loops=parameter["txt_self_loops"], img_gat_layer=parameter["img_gat_layer"],
-                                  img_gat_drop=parameter["img_gat_drop"],
-                                  img_gat_head=parameter["img_gat_head"], img_self_loops=parameter["img_self_loops"],
-                                  img_edge_dim=parameter["img_edge_dim"],
-                                  img_patch=parameter["img_patch"], lam=parameter["lambda"],
-                                  type_bmco=parameter["type_bmco"], visualization=parameter["visualization"])
-    print("Image Encoder", sum(p.numel() for p in model.img_encoder.parameters() if p.requires_grad))
-    print("Text Encoder", sum(p.numel() for p in model.txt_encoder.parameters() if p.requires_grad))
-    print("Interaction", sum(p.numel() for p in model.interaction.parameters() if p.requires_grad))
-    print("Alignment", sum(p.numel() for p in model.alignment.parameters() if p.requires_grad))
+knowledge_type = 0
+model = KEHModel_without_know(txt_input_dim=parameter["txt_input_dim"], txt_out_size=parameter["txt_out_size"],
+                              img_input_dim=parameter["img_input_dim"],
+                              img_inter_dim=parameter["img_inter_dim"],
+                              img_out_dim=parameter["img_out_dim"], cro_layers=parameter["cro_layers"],
+                              cro_heads=parameter["cro_heads"], cro_drop=parameter["cro_drop"],
+                              txt_gat_layer=parameter["txt_gat_layer"], txt_gat_drop=parameter["txt_gat_drop"],
+                              txt_gat_head=parameter["txt_gat_head"],
+                              txt_self_loops=parameter["txt_self_loops"], img_gat_layer=parameter["img_gat_layer"],
+                              img_gat_drop=parameter["img_gat_drop"],
+                              img_gat_head=parameter["img_gat_head"], img_self_loops=parameter["img_self_loops"],
+                              img_edge_dim=parameter["img_edge_dim"],
+                              img_patch=parameter["img_patch"], lam=parameter["lambda"],
+                              type_bmco=parameter["type_bmco"], visualization=parameter["visualization"])
+print("Image Encoder", sum(p.numel() for p in model.img_encoder.parameters() if p.requires_grad))
+print("Text Encoder", sum(p.numel() for p in model.txt_encoder.parameters() if p.requires_grad))
+print("Interaction", sum(p.numel() for p in model.interaction.parameters() if p.requires_grad))
+print("Alignment", sum(p.numel() for p in model.alignment.parameters() if p.requires_grad))
 print("Total Params", sum(p.numel() for p in model.parameters() if p.requires_grad))
 
 model.to(device=device)
 # 0.05
+# TODO optimizer
 optimizer = optim.Adam(params=model.parameters(), lr=parameter["lr"], betas=(0.9, 0.999), eps=1e-8,
                        weight_decay=parameter["weight_decay"],
                        amsgrad=True)
@@ -196,54 +171,26 @@ def train_model(epoch, train_loader):
     model.train()
     predict = []
     real_label = []
-    if knowledge_type > 0:
-        for batch_idx, (img_batch, embed_batch1, org_seq, org_word_len, mask_batch1,
-                        edge_cap1, gnn_mask_1, np_mask_1, labels, encoded_know, know_word_spans, mask_batch_know,
-                        edge_cap_know, gnn_mask_know,
-                        key_padding_mask_img) in enumerate(tqdm(train_loader)):
-            embed_batch1 = {k: v.to(device) for k, v in embed_batch1.items()}
-            encoded_know = {k: v.to(device) for k, v in encoded_know.items()}
-            batch = len(img_batch)
-            with torch.set_grad_enabled(True):
-                y = model(imgs=img_batch.cuda(), texts=embed_batch1, mask_batch=mask_batch1.cuda(),
-                          img_edge_index=img_edge_index,
-                          t1_word_seq=org_seq, txt_edge_index=edge_cap1, gnn_mask=gnn_mask_1.cuda(),
-                          np_mask=np_mask_1.cuda(), encoded_know=encoded_know, know_word_spans=know_word_spans,
-                          mask_batch_know=mask_batch_know.cuda()
-                          , edge_cap_know=edge_cap_know, gnn_mask_know=gnn_mask_know.cuda(), img_edge_attr=None,
-                          key_padding_mask_img=key_padding_mask_img)
+    for batch_idx, (img_batch, embed_batch1, org_seq, org_word_len, mask_batch1,
+                    edge_cap1, gnn_mask_1, np_mask_1, labels, key_padding_mask_img) in enumerate(tqdm(train_loader)):
+        embed_batch1 = {k: v.to(device) for k, v in embed_batch1.items()}
+        batch = len(img_batch)
+        with torch.set_grad_enabled(True):
+            y, loss_contra = model(imgs=img_batch.cuda(), texts=embed_batch1, mask_batch=mask_batch1.cuda(),
+                      img_edge_index=img_edge_index,
+                      t1_word_seq=org_seq, txt_edge_index=edge_cap1, gnn_mask=gnn_mask_1.cuda(),
+                      np_mask=np_mask_1.cuda(), img_edge_attr=None, key_padding_mask_img=key_padding_mask_img)
 
-                loss = cross_entropy_loss(y, labels.cuda())
-                loss.backward()
-                train_loss += float(loss.detach().item())
-                optimizer.step()
-                optimizer.zero_grad()  # clear gradients for this training step
-            predict = predict + get_metrics(y.cpu())
-            real_label = real_label + labels.cpu().numpy().tolist()
-            total += batch
-            torch.cuda.empty_cache()
-            del img_batch, embed_batch1
-    else:
-        for batch_idx, (img_batch, embed_batch1, org_seq, org_word_len, mask_batch1,
-                        edge_cap1, gnn_mask_1, np_mask_1, labels, key_padding_mask_img) in enumerate(tqdm(train_loader)):
-            embed_batch1 = {k: v.to(device) for k, v in embed_batch1.items()}
-            batch = len(img_batch)
-            with torch.set_grad_enabled(True):
-                y, loss_contra = model(imgs=img_batch.cuda(), texts=embed_batch1, mask_batch=mask_batch1.cuda(),
-                          img_edge_index=img_edge_index,
-                          t1_word_seq=org_seq, txt_edge_index=edge_cap1, gnn_mask=gnn_mask_1.cuda(),
-                          np_mask=np_mask_1.cuda(), img_edge_attr=None, key_padding_mask_img=key_padding_mask_img)
-
-                loss = cross_entropy_loss(y, labels.cuda()) + loss_contra
-                loss.backward()
-                train_loss += float(loss.detach().item())
-                optimizer.step()
-                optimizer.zero_grad()  # clear gradients for this training step
-            predict = predict + get_metrics(y.cpu())
-            real_label = real_label + labels.cpu().numpy().tolist()
-            total += batch
-            torch.cuda.empty_cache()
-            del img_batch, embed_batch1
+            loss = cross_entropy_loss(y, labels.cuda()) + loss_contra
+            loss.backward()
+            train_loss += float(loss.detach().item())
+            optimizer.step()
+            optimizer.zero_grad()  # clear gradients for this training step
+        predict = predict + get_metrics(y.cpu())
+        real_label = real_label + labels.cpu().numpy().tolist()
+        total += batch
+        torch.cuda.empty_cache()
+        del img_batch, embed_batch1
     # Calculate loss and accuracy for current epoch
     logger.log(mode="train", scalar_value=train_loss / len(train_loader), epoch=epoch, scalar_name='loss')
     acc, recall, precision, f1 = get_four_metrics(real_label, predict)
@@ -263,42 +210,20 @@ def eval_validation_loss(val_loader):
     real_label = []
     model.eval()
     with torch.no_grad():
-        if knowledge_type > 0:
-            for batch_idx, (img_batch, embed_batch1, org_seq, org_word_len, mask_batch1,
-                            edge_cap1, gnn_mask_1, np_mask_1, labels, encoded_know, know_word_spans, mask_batch_know,
-                            edge_cap_know, gnn_mask_know,
-                            key_padding_mask_img) in enumerate(tqdm(val_loader)):
-                embed_batch1 = {k: v.to(device) for k, v in embed_batch1.items()}
-                encoded_know = {k: v.to(device) for k, v in encoded_know.items()}
-                y, loss_contra = model(imgs=img_batch.cuda(), texts=embed_batch1, mask_batch=mask_batch1.cuda(),
-                          img_edge_index=img_edge_index,
-                          t1_word_seq=org_seq, txt_edge_index=edge_cap1, gnn_mask=gnn_mask_1.cuda(),
-                          np_mask=np_mask_1.cuda(), encoded_know=encoded_know, know_word_spans=know_word_spans,
-                          mask_batch_know=mask_batch_know.cuda()
-                          , edge_cap_know=edge_cap_know, gnn_mask_know=gnn_mask_know.cuda(), img_edge_attr=None,
-                          key_padding_mask_img=key_padding_mask_img)
+        for batch_idx, (img_batch, embed_batch1, org_seq, org_word_len, mask_batch1,
+                        edge_cap1, gnn_mask_1, np_mask_1, labels, key_padding_mask_img) in enumerate(tqdm(val_loader)):
+            embed_batch1 = {k: v.to(device) for k, v in embed_batch1.items()}
+            y, loss_contra = model(imgs=img_batch.cuda(), texts=embed_batch1, mask_batch=mask_batch1.cuda(),
+                      img_edge_index=img_edge_index,
+                      t1_word_seq=org_seq, txt_edge_index=edge_cap1, gnn_mask=gnn_mask_1.cuda(),
+                      np_mask=np_mask_1.cuda(), img_edge_attr=None, key_padding_mask_img=key_padding_mask_img)
 
-                loss = cross_entropy_loss(y, labels.cuda())
-                val_loss += float(loss.clone().detach().item())
-                predict = predict + get_metrics(y.cpu())
-                real_label = real_label + labels.cpu().numpy().tolist()
-                torch.cuda.empty_cache()
-                del img_batch, embed_batch1
-        else:
-            for batch_idx, (img_batch, embed_batch1, org_seq, org_word_len, mask_batch1,
-                            edge_cap1, gnn_mask_1, np_mask_1, labels, key_padding_mask_img) in enumerate(tqdm(val_loader)):
-                embed_batch1 = {k: v.to(device) for k, v in embed_batch1.items()}
-                y, loss_contra = model(imgs=img_batch.cuda(), texts=embed_batch1, mask_batch=mask_batch1.cuda(),
-                          img_edge_index=img_edge_index,
-                          t1_word_seq=org_seq, txt_edge_index=edge_cap1, gnn_mask=gnn_mask_1.cuda(),
-                          np_mask=np_mask_1.cuda(), img_edge_attr=None, key_padding_mask_img=key_padding_mask_img)
-
-                loss = cross_entropy_loss(y, labels.cuda())
-                val_loss += float(loss.clone().detach().item())
-                predict = predict + get_metrics(y.cpu())
-                real_label = real_label + labels.cpu().numpy().tolist()
-                torch.cuda.empty_cache()
-                del img_batch, embed_batch1
+            loss = cross_entropy_loss(y, labels.cuda())
+            val_loss += float(loss.clone().detach().item())
+            predict = predict + get_metrics(y.cpu())
+            real_label = real_label + labels.cpu().numpy().tolist()
+            torch.cuda.empty_cache()
+            del img_batch, embed_batch1
 
         acc, recall, precision, f1 = get_four_metrics(real_label, predict)
         print(' Val Avg loss: {:.4f} Acc: {:.4f} Rec: {:.4f} Pre: {:.4f} F1: {:.4f}'.format(val_loss / len(val_loader),
@@ -324,43 +249,20 @@ def evaluate_model(epoch, val_loader):
     model.eval()
 
     with torch.no_grad():
-        if knowledge_type > 0:
-            for batch_idx, (img_batch, embed_batch1, org_seq, org_word_len, mask_batch1,
-                            edge_cap1, gnn_mask_1, np_mask_1, labels, encoded_know, know_word_spans, mask_batch_know,
-                            edge_cap_know,
-                            gnn_mask_know, key_padding_mask_img) in enumerate(
-                tqdm(val_loader)):
-                embed_batch1 = {k: v.to(device) for k, v in embed_batch1.items()}
-                encoded_know = {k: v.to(device) for k, v in encoded_know.items()}
-                y = model(imgs=img_batch.cuda(), texts=embed_batch1, mask_batch=mask_batch1.cuda(),
-                          img_edge_index=img_edge_index,
-                          t1_word_seq=org_seq, txt_edge_index=edge_cap1, gnn_mask=gnn_mask_1.cuda(),
-                          np_mask=np_mask_1.cuda(), encoded_know=encoded_know, know_word_spans=know_word_spans,
-                          mask_batch_know=mask_batch_know.cuda()
-                          , edge_cap_know=edge_cap_know, gnn_mask_know=gnn_mask_know.cuda(), img_edge_attr=None,
-                          key_padding_mask_img=key_padding_mask_img)
+        for batch_idx, (img_batch, embed_batch1, org_seq, org_word_len, mask_batch1,
+                        edge_cap1, gnn_mask_1, np_mask_1, labels, key_padding_mask_img) in enumerate(tqdm(val_loader)):
+            embed_batch1 = {k: v.to(device) for k, v in embed_batch1.items()}
+            y, loss_contra = model(imgs=img_batch.cuda(), texts=embed_batch1, mask_batch=mask_batch1.cuda(),
+                      img_edge_index=img_edge_index,
+                      t1_word_seq=org_seq, txt_edge_index=edge_cap1, gnn_mask=gnn_mask_1.cuda(),
+                      np_mask=np_mask_1.cuda(), img_edge_attr=None, key_padding_mask_img=key_padding_mask_img)
 
-                loss = cross_entropy_loss(y, labels.cuda())
-                val_loss += float(loss.clone().detach().item())
-                predict = predict + get_metrics(y.cpu())
-                real_label = real_label + labels.cpu().numpy().tolist()
-                torch.cuda.empty_cache()
-                del img_batch, embed_batch1
-        else:
-            for batch_idx, (img_batch, embed_batch1, org_seq, org_word_len, mask_batch1,
-                            edge_cap1, gnn_mask_1, np_mask_1, labels, key_padding_mask_img) in enumerate(tqdm(val_loader)):
-                embed_batch1 = {k: v.to(device) for k, v in embed_batch1.items()}
-                y, loss_contra = model(imgs=img_batch.cuda(), texts=embed_batch1, mask_batch=mask_batch1.cuda(),
-                          img_edge_index=img_edge_index,
-                          t1_word_seq=org_seq, txt_edge_index=edge_cap1, gnn_mask=gnn_mask_1.cuda(),
-                          np_mask=np_mask_1.cuda(), img_edge_attr=None, key_padding_mask_img=key_padding_mask_img)
-
-                loss = cross_entropy_loss(y, labels.cuda())
-                val_loss += float(loss.clone().detach().item())
-                predict = predict + get_metrics(y.cpu())
-                real_label = real_label + labels.cpu().numpy().tolist()
-                torch.cuda.empty_cache()
-                del img_batch, embed_batch1
+            loss = cross_entropy_loss(y, labels.cuda())
+            val_loss += float(loss.clone().detach().item())
+            predict = predict + get_metrics(y.cpu())
+            real_label = real_label + labels.cpu().numpy().tolist()
+            torch.cuda.empty_cache()
+            del img_batch, embed_batch1
 
         acc, recall, precision, f1 = get_four_metrics(real_label, predict)
 
@@ -391,43 +293,21 @@ def evaluate_model_test(epoch, test_loader):
     model.eval()
 
     with torch.no_grad():
-        if knowledge_type > 0:
-            for batch_idx, (img_batch, embed_batch1, org_seq, org_word_len, mask_batch1,
-                            edge_cap1, gnn_mask_1, np_mask_1, labels, encoded_know, know_word_spans, mask_batch_know,
-                            edge_cap_know,
-                            gnn_mask_know, key_padding_mask_img) in enumerate(
-                tqdm(test_loader)):
-                embed_batch1 = {k: v.to(device) for k, v in embed_batch1.items()}
-                encoded_know = {k: v.to(device) for k, v in encoded_know.items()}
-                y = model(imgs=img_batch.cuda(), texts=embed_batch1, mask_batch=mask_batch1.cuda(),
+        for batch_idx, (img_batch, embed_batch1, org_seq, org_word_len, mask_batch1,
+                        edge_cap1, gnn_mask_1, np_mask_1, labels, key_padding_mask_img) in enumerate(tqdm(test_loader)):
+            embed_batch1 = {k: v.to(device) for k, v in embed_batch1.items()}
+            with torch.set_grad_enabled(True):
+                y, loss_contra = model(imgs=img_batch.cuda(), texts=embed_batch1, mask_batch=mask_batch1.cuda(),
                           img_edge_index=img_edge_index,
                           t1_word_seq=org_seq, txt_edge_index=edge_cap1, gnn_mask=gnn_mask_1.cuda(),
-                          np_mask=np_mask_1.cuda(), encoded_know=encoded_know, know_word_spans=know_word_spans,
-                          mask_batch_know=mask_batch_know.cuda()
-                          , edge_cap_know=edge_cap_know, img_edge_attr=None, gnn_mask_know=gnn_mask_know.cuda(),
-                          key_padding_mask_img=key_padding_mask_img)
+                          np_mask=np_mask_1.cuda(), img_edge_attr=None, key_padding_mask_img=key_padding_mask_img)
+
                 loss = cross_entropy_loss(y, labels.cuda())
                 test_loss += float(loss.clone().detach().item())
-                predict = predict + get_metrics(y.cpu())
-                real_label = real_label + labels.cpu().numpy().tolist()
-                torch.cuda.empty_cache()
-                del img_batch, embed_batch1
-        else:
-            for batch_idx, (img_batch, embed_batch1, org_seq, org_word_len, mask_batch1,
-                            edge_cap1, gnn_mask_1, np_mask_1, labels, key_padding_mask_img) in enumerate(tqdm(test_loader)):
-                embed_batch1 = {k: v.to(device) for k, v in embed_batch1.items()}
-                with torch.set_grad_enabled(True):
-                    y, loss_contra = model(imgs=img_batch.cuda(), texts=embed_batch1, mask_batch=mask_batch1.cuda(),
-                              img_edge_index=img_edge_index,
-                              t1_word_seq=org_seq, txt_edge_index=edge_cap1, gnn_mask=gnn_mask_1.cuda(),
-                              np_mask=np_mask_1.cuda(), img_edge_attr=None, key_padding_mask_img=key_padding_mask_img)
-
-                    loss = cross_entropy_loss(y, labels.cuda())
-                    test_loss += float(loss.clone().detach().item())
-                predict = predict + get_metrics(y.cpu())
-                real_label = real_label + labels.cpu().numpy().tolist()
-                torch.cuda.empty_cache()
-                del img_batch, embed_batch1
+            predict = predict + get_metrics(y.cpu())
+            real_label = real_label + labels.cpu().numpy().tolist()
+            torch.cuda.empty_cache()
+            del img_batch, embed_batch1
 
     acc, recall, precision, f1 = get_four_metrics(real_label, predict)
 
@@ -460,63 +340,27 @@ def test_match_accuracy(val_loader):
         a_know_list = []
         model.eval()
         with torch.no_grad():
-            if knowledge_type > 0:
-                for batch_idx, (img_batch, embed_batch1, org_seq, org_word_len, mask_batch1,
-                                edge_cap1, gnn_mask_1, np_mask_1, labels, encoded_know, know_word_spans,
-                                mask_batch_know, edge_cap_know, gnn_mask_know,
-                                key_padding_mask_img) in enumerate(tqdm(val_loader)):
-                    embed_batch1 = {k: v.to(device) for k, v in embed_batch1.items()}
-                    encoded_know = {k: v.to(device) for k, v in encoded_know.items()}
-                    y, pv, pv_know, a, a_know = model(imgs=img_batch.cuda(), texts=embed_batch1,
-                                                      mask_batch=mask_batch1.cuda(),
-                                                      img_edge_index=img_edge_index,
-                                                      t1_word_seq=org_seq, txt_edge_index=edge_cap1,
-                                                      gnn_mask=gnn_mask_1.cuda(),
-                                                      np_mask=np_mask_1.cuda(), encoded_know=encoded_know,
-                                                      know_word_spans=know_word_spans,
-                                                      mask_batch_know=mask_batch_know.cuda()
-                                                      , edge_cap_know=edge_cap_know, img_edge_attr=None,
-                                                      gnn_mask_know=gnn_mask_know.cuda(),
-                                                      key_padding_mask_img=key_padding_mask_img)
+            for batch_idx, (img_batch, embed_batch1, org_seq, org_word_len, mask_batch1,
+                            edge_cap1, gnn_mask_1, np_mask_1, labels, key_padding_mask_img) in enumerate(tqdm(val_loader)):
+                embed_batch1 = {k: v.to(device) for k, v in embed_batch1.items()}
+                with torch.no_grad():
+                    y, a, pv = model(imgs=img_batch.cuda(), texts=embed_batch1, mask_batch=mask_batch1.cuda(),
+                                     img_edge_index=img_edge_index,
+                                     t1_word_seq=org_seq, txt_edge_index=edge_cap1, gnn_mask=gnn_mask_1.cuda(),
+                                     np_mask=np_mask_1.cuda(), img_edge_attr=None, key_padding_mask_img=key_padding_mask_img)
 
                     loss = cross_entropy_loss(y, labels.cuda())
                     val_loss += float(loss.clone().detach().item())
-                    predict = predict + get_metrics(y.cpu())
-                    real_label = real_label + labels.cpu().numpy().tolist()
-                    pv_list.append(pv.cpu().clone().detach())
-                    pv_know_list.append(pv_know.cpu().clone().detach())
-                    a_list.append(a.cpu().clone().detach())
-                    a_know_list.append(a_know.cpu().clone().detach())
-                    torch.cuda.empty_cache()
-                    del img_batch, embed_batch1
-                    acc, recall, precision, f1 = get_four_metrics(real_label, predict)
-                save_result = {"real_label": real_label, 'predict_label': predict, "pv_list": pv_list,
-                               "pv_know_list ":
-                                   pv_know_list, " a_list": a_list, "a_know_list": a_know_list}
-                torch.save(save_result, "with_know")
-
-            else:
-                for batch_idx, (img_batch, embed_batch1, org_seq, org_word_len, mask_batch1,
-                                edge_cap1, gnn_mask_1, np_mask_1, labels, key_padding_mask_img) in enumerate(tqdm(val_loader)):
-                    embed_batch1 = {k: v.to(device) for k, v in embed_batch1.items()}
-                    with torch.no_grad():
-                        y, a, pv = model(imgs=img_batch.cuda(), texts=embed_batch1, mask_batch=mask_batch1.cuda(),
-                                         img_edge_index=img_edge_index,
-                                         t1_word_seq=org_seq, txt_edge_index=edge_cap1, gnn_mask=gnn_mask_1.cuda(),
-                                         np_mask=np_mask_1.cuda(), img_edge_attr=None, key_padding_mask_img=key_padding_mask_img)
-
-                        loss = cross_entropy_loss(y, labels.cuda())
-                        val_loss += float(loss.clone().detach().item())
-                    predict = predict + get_metrics(y.cpu())
-                    real_label = real_label + labels.cpu().numpy().tolist()
-                    pv_list.append(pv.cpu().clone().detach())
-                    a_list.append(a.cpu().clone().detach())
-                    torch.cuda.empty_cache()
-                    del img_batch, embed_batch1
-                acc, recall, precision, f1 = get_four_metrics(real_label, predict)
-                save_result = {"real_label": real_label, 'predict_label': predict, "pv_list": pv_list,
-                               " a_list": a_list}
-                torch.save(save_result, "with_out_knowledge")
+                predict = predict + get_metrics(y.cpu())
+                real_label = real_label + labels.cpu().numpy().tolist()
+                pv_list.append(pv.cpu().clone().detach())
+                a_list.append(a.cpu().clone().detach())
+                torch.cuda.empty_cache()
+                del img_batch, embed_batch1
+            acc, recall, precision, f1 = get_four_metrics(real_label, predict)
+            save_result = {"real_label": real_label, 'predict_label': predict, "pv_list": pv_list,
+                           " a_list": a_list}
+            torch.save(save_result, "with_out_knowledge")
 
         print(
             "Avg loss: {:.4f} Acc: {:.4f}  Rec: {:.4f} Pre: {:.4f} F1: {:.4f}".format(val_loss, acc, recall, precision,
@@ -539,13 +383,13 @@ def main():
             annotation_train = os.path.join(annotation_files, "trainknow_dep.json")
             annotation_val = os.path.join(annotation_files, "valknow_dep.json")
             annotation_test = os.path.join(annotation_files, "testknow_dep.json")
-        # img_train = os.path.join(img_files, "train_B32.pt")
-        # img_val = os.path.join(img_files, "val_B32.pt")
-        # img_test = os.path.join(img_files, "test_B32.pt")
+        img_train = os.path.join(img_files, "train_B32.pt")
+        img_val = os.path.join(img_files, "val_B32.pt")
+        img_test = os.path.join(img_files, "test_B32.pt")
         # 因为文件过大 训练集单独加载每个样本图像
-        img_train = os.path.join(img_files, "train_152_4.pt")
-        img_val = os.path.join(img_files, "val_152_4.pt")
-        img_test = os.path.join(img_files, "test_152_4.pt")
+        # img_train = os.path.join(img_files, "train_152_4.pt")
+        # img_val = os.path.join(img_files, "val_152_4.pt")
+        # img_test = os.path.join(img_files, "test_152_4.pt")
         train_dataset = BaseSet(type="train", max_length=parameter["max_length"], text_path=annotation_train,
                                 use_np=use_np, img_path=img_train,
                                 knowledge=knowledge_type)
@@ -553,35 +397,19 @@ def main():
                               img_path=img_val, knowledge=knowledge_type)
         test_dataset = BaseSet(type="test", max_length=parameter["max_length"], text_path=annotation_test,
                                use_np=use_np, img_path=img_test, knowledge=knowledge_type)
-        if knowledge_type > 0:
-            train_loader = DataLoader(dataset=train_dataset, batch_size=parameter["batch_size"], num_workers=8,
-                                      shuffle=True,
-                                      collate_fn=PadCollate(use_np=use_np, max_know_len=parameter["know_max_length"],
-                                                            knwoledge_type=knowledge_type))
-            print("training dataset has been loaded successful!")
-            val_loader = DataLoader(dataset=val_dataset, batch_size=parameter["batch_size"], num_workers=4,
-                                    shuffle=True,
-                                    collate_fn=PadCollate(use_np=use_np, max_know_len=parameter["know_max_length"],
-                                                          knwoledge_type=knowledge_type))
-            print("validation dataset has been loaded successful!")
-            test_loader = DataLoader(dataset=test_dataset, batch_size=parameter["batch_size"], num_workers=4,
-                                     shuffle=True,
-                                     collate_fn=PadCollate(use_np=use_np, max_know_len=parameter["know_max_length"],
-                                                           knwoledge_type=knowledge_type))
-            print("test dataset has been loaded successful!")
-        else:
-            train_loader = DataLoader(dataset=train_dataset, batch_size=parameter["batch_size"], num_workers=4,
-                                      shuffle=True,
-                                      collate_fn=PadCollate_without_know())
-            print("training dataset has been loaded successful!")
-            val_loader = DataLoader(dataset=val_dataset, batch_size=parameter["batch_size"], num_workers=4,
-                                    shuffle=True,
-                                    collate_fn=PadCollate_without_know())
-            print("validation dataset has been loaded successful!")
-            test_loader = DataLoader(dataset=test_dataset, batch_size=16, num_workers=4,
-                                     shuffle=True,
-                                     collate_fn=PadCollate_without_know())
-            print("test dataset has been loaded successful!")
+
+        train_loader = DataLoader(dataset=train_dataset, batch_size=parameter["batch_size"], num_workers=4,
+                                  shuffle=True,
+                                  collate_fn=PadCollate_without_know())
+        print("training dataset has been loaded successful!")
+        val_loader = DataLoader(dataset=val_dataset, batch_size=parameter["batch_size"], num_workers=4,
+                                shuffle=True,
+                                collate_fn=PadCollate_without_know())
+        print("validation dataset has been loaded successful!")
+        test_loader = DataLoader(dataset=test_dataset, batch_size=16, num_workers=4,
+                                 shuffle=True,
+                                 collate_fn=PadCollate_without_know())
+        print("test dataset has been loaded successful!")
 
         start_epoch = 0
         patience = 8
