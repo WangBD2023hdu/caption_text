@@ -298,11 +298,12 @@ def evaluate_model_test(epoch, test_loader):
 
     with torch.no_grad():
         for batch_idx, (img_batch, embed_batch1, caption_cap ,org_seq, cap_seq, org_word_len, caption_len, mask_batch1, mask_batch_cap, mask_total,
-                        edge_cap1, gnn_mask_1, np_mask_1, labels, key_padding_mask_img) in enumerate(tqdm(train_loader)):
+                        edge_cap1, gnn_mask_1, np_mask_1, labels, key_padding_mask_img) in enumerate(tqdm(test_loader)):
             embed_batch1 = {k: v.to(device) for k, v in embed_batch1.items()}
             caption_cap = {k: v.to(device) for k, v in caption_cap.items()}
             batch = len(img_batch)
-            with torch.set_grad_enabled(True):
+            # TODO
+            with torch.set_grad_enabled(False):
                 y, loss_contra = model(imgs=img_batch.cuda(), texts=embed_batch1, caption=caption_cap, mask_batch=mask_batch1.cuda(),
                             cap_mask_batch=mask_batch_cap.cuda(), mask_total=mask_total.cuda() ,img_edge_index=img_edge_index,
                         t1_word_seq=org_seq, caption_seq= cap_seq,txt_edge_index=edge_cap1, gnn_mask=gnn_mask_1.cuda(),
