@@ -102,9 +102,10 @@ class PadCollate_without_know:
         
         text_total = twitters+captions
 
+        captions = text_total
         token_lens = [len(twitter) for twitter in twitters]
         caption_lens = [len(caption) for caption in captions]
-        len_total = [len(words) for words in text_total]
+
 
         encoded_cap = self.tokenizer(twitters, is_split_into_words=True, return_tensors="pt", truncation=True,
                                      max_length=100, padding=True)
@@ -141,17 +142,12 @@ class PadCollate_without_know:
         ## 生成总掩码
         #word_len_cap
         #word_len
-        total_len = [i+j for i,j in zip(word_len, word_len_cap)]
-        
         max_len1 = max(word_len)
         max_len2 = max(word_len_cap)
-        max_total = max(total_len)
         # mask矩阵是相对于word token的  key_padding_mask for computing the importance of each word in txt_encoder and
         # interaction modules
         mask_batch1 = construct_mask_text(word_len, max_len1)
         mask_batch_cap = construct_mask_text(word_len_cap, max_len2)
-        mask_total = construct_mask_text(total_len, max_total)
-
 
         img_patch_lens = [len(img) for img in xs]
         max_len_img = max(img_patch_lens)
@@ -175,7 +171,7 @@ class PadCollate_without_know:
 
         # for image graph
         # attr_img = construct_edge_attr()
-        return xs, encoded_cap, caption_cap, word_spans, word_spans_cap, word_len, word_len_cap, mask_batch1, mask_batch_cap, mask_total, edge_cap1, gnn_mask_1, np_mask_1, labels, mask_batch_img
+        return xs, encoded_cap, caption_cap, word_spans, word_spans_cap, word_len, word_len_cap, mask_batch1, mask_batch_cap, edge_cap1, gnn_mask_1, np_mask_1, labels, mask_batch_img
 
     def __call__(self, batch):
         return self.pad_collate(batch)

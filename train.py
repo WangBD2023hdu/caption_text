@@ -171,14 +171,14 @@ def train_model(epoch, train_loader):
     model.train()
     predict = []
     real_label = []
-    for batch_idx, (img_batch, embed_batch1, caption_cap ,org_seq, cap_seq, org_word_len, caption_len, mask_batch1, mask_batch_cap, mask_total,
+    for batch_idx, (img_batch, embed_batch1, caption_cap ,org_seq, cap_seq, org_word_len, caption_len, mask_batch1, mask_batch_cap, 
                     edge_cap1, gnn_mask_1, np_mask_1, labels, key_padding_mask_img) in enumerate(tqdm(train_loader)):
         embed_batch1 = {k: v.to(device) for k, v in embed_batch1.items()}
         caption_cap = {k: v.to(device) for k, v in caption_cap.items()}
         batch = len(img_batch)
         with torch.set_grad_enabled(True):
             y, loss_contra = model(imgs=img_batch.cuda(), texts=embed_batch1, caption=caption_cap, mask_batch=mask_batch1.cuda(),
-                        cap_mask_batch=mask_batch_cap.cuda(), mask_total=mask_total.cuda() ,img_edge_index=img_edge_index,
+                        cap_mask_batch=mask_batch_cap.cuda(), img_edge_index=img_edge_index,
                       t1_word_seq=org_seq, caption_seq= cap_seq,txt_edge_index=edge_cap1, gnn_mask=gnn_mask_1.cuda(),
                       np_mask=np_mask_1.cuda(), img_edge_attr=None, key_padding_mask_img=key_padding_mask_img)
 
@@ -211,12 +211,12 @@ def eval_validation_loss(val_loader):
     real_label = []
     model.eval()
     with torch.no_grad():
-        for batch_idx, (img_batch, embed_batch1, caption_cap ,org_seq, cap_seq, org_word_len, caption_len, mask_batch1, mask_batch_cap, mask_total,
+        for batch_idx, (img_batch, embed_batch1, caption_cap ,org_seq, cap_seq, org_word_len, caption_len, mask_batch1, mask_batch_cap, 
                         edge_cap1, gnn_mask_1, np_mask_1, labels, key_padding_mask_img) in enumerate(tqdm(val_loader)):
             embed_batch1 = {k: v.to(device) for k, v in embed_batch1.items()}
             caption_cap = {k: v.to(device) for k, v in caption_cap.items()}
             y, loss_contra = model(imgs=img_batch.cuda(), texts=embed_batch1, caption=caption_cap, mask_batch=mask_batch1.cuda(),
-                        cap_mask_batch=mask_batch_cap.cuda(), mask_total=mask_total.cuda() ,img_edge_index=img_edge_index,
+                        cap_mask_batch=mask_batch_cap.cuda(), img_edge_index=img_edge_index,
                       t1_word_seq=org_seq, caption_seq= cap_seq,txt_edge_index=edge_cap1, gnn_mask=gnn_mask_1.cuda(),
                       np_mask=np_mask_1.cuda(), img_edge_attr=None, key_padding_mask_img=key_padding_mask_img)
 
@@ -251,13 +251,13 @@ def evaluate_model(epoch, val_loader):
     model.eval()
 
     with torch.no_grad():
-        for batch_idx, (img_batch, embed_batch1, caption_cap ,org_seq, cap_seq, org_word_len, caption_len, mask_batch1, mask_batch_cap, mask_total,
+        for batch_idx, (img_batch, embed_batch1, caption_cap ,org_seq, cap_seq, org_word_len, caption_len, mask_batch1, mask_batch_cap, 
                         edge_cap1, gnn_mask_1, np_mask_1, labels, key_padding_mask_img) in enumerate(tqdm(val_loader)):
             embed_batch1 = {k: v.to(device) for k, v in embed_batch1.items()}
             caption_cap = {k: v.to(device) for k, v in caption_cap.items()}
 
             y, loss_contra = model(imgs=img_batch.cuda(), texts=embed_batch1, caption=caption_cap, mask_batch=mask_batch1.cuda(),
-                        cap_mask_batch=mask_batch_cap.cuda(), mask_total=mask_total.cuda() ,img_edge_index=img_edge_index,
+                        cap_mask_batch=mask_batch_cap.cuda(), img_edge_index=img_edge_index,
                       t1_word_seq=org_seq, caption_seq= cap_seq,txt_edge_index=edge_cap1, gnn_mask=gnn_mask_1.cuda(),
                       np_mask=np_mask_1.cuda(), img_edge_attr=None, key_padding_mask_img=key_padding_mask_img)
 
@@ -297,7 +297,7 @@ def evaluate_model_test(epoch, test_loader):
     model.eval()
 
     with torch.no_grad():
-        for batch_idx, (img_batch, embed_batch1, caption_cap ,org_seq, cap_seq, org_word_len, caption_len, mask_batch1, mask_batch_cap, mask_total,
+        for batch_idx, (img_batch, embed_batch1, caption_cap ,org_seq, cap_seq, org_word_len, caption_len, mask_batch1, mask_batch_cap,
                         edge_cap1, gnn_mask_1, np_mask_1, labels, key_padding_mask_img) in enumerate(tqdm(test_loader)):
             embed_batch1 = {k: v.to(device) for k, v in embed_batch1.items()}
             caption_cap = {k: v.to(device) for k, v in caption_cap.items()}
@@ -305,7 +305,7 @@ def evaluate_model_test(epoch, test_loader):
             # TODO
             with torch.set_grad_enabled(False):
                 y, loss_contra = model(imgs=img_batch.cuda(), texts=embed_batch1, caption=caption_cap, mask_batch=mask_batch1.cuda(),
-                            cap_mask_batch=mask_batch_cap.cuda(), mask_total=mask_total.cuda() ,img_edge_index=img_edge_index,
+                            cap_mask_batch=mask_batch_cap.cuda(),img_edge_index=img_edge_index,
                         t1_word_seq=org_seq, caption_seq= cap_seq,txt_edge_index=edge_cap1, gnn_mask=gnn_mask_1.cuda(),
                         np_mask=np_mask_1.cuda(), img_edge_attr=None, key_padding_mask_img=key_padding_mask_img)
                 loss = cross_entropy_loss(y, labels.cuda())
@@ -346,13 +346,13 @@ def test_match_accuracy(val_loader):
         a_know_list = []
         model.eval()
         with torch.no_grad():
-            for batch_idx, (img_batch, embed_batch1, caption_cap ,org_seq, cap_seq, org_word_len, caption_len, mask_batch1, mask_batch_cap, mask_total,
+            for batch_idx, (img_batch, embed_batch1, caption_cap ,org_seq, cap_seq, org_word_len, caption_len, mask_batch1, mask_batch_cap, 
                             edge_cap1, gnn_mask_1, np_mask_1, labels, key_padding_mask_img) in enumerate(tqdm(val_loader)):
                 embed_batch1 = {k: v.to(device) for k, v in embed_batch1.items()}
                 caption_cap = {k: v.to(device) for k, v in caption_cap.items()}
                 with torch.no_grad():
                     y, a, pv, loss_contra = model(imgs=img_batch.cuda(), texts=embed_batch1, caption=caption_cap, mask_batch=mask_batch1.cuda(),
-                                cap_mask_batch=mask_batch_cap.cuda(), mask_total=mask_total.cuda() ,img_edge_index=img_edge_index,
+                                cap_mask_batch=mask_batch_cap.cuda(),img_edge_index=img_edge_index,
                             t1_word_seq=org_seq, caption_seq= cap_seq,txt_edge_index=edge_cap1, gnn_mask=gnn_mask_1.cuda(),
                             np_mask=np_mask_1.cuda(), img_edge_attr=None, key_padding_mask_img=key_padding_mask_img)
 
