@@ -96,9 +96,9 @@ class PadCollate_without_know:
         # 获取batch中 token caption 的最大长度
         # 获取总的文本长度
         
-        twitters = list(map(lambda t:t[self.twitter]), batch)
+        twitters = list(map(lambda t:t[self.twitter], batch))
         #说明文本长度
-        captions = list(map(lambda t:t[self.caption]), batch)
+        captions = list(map(lambda t:t[self.caption], batch))
         
         text_total = twitters+captions
 
