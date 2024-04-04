@@ -142,10 +142,10 @@ class PadCollate_without_know:
         #word_len_cap
         #word_len
         total_len = [i+j for i,j in zip(word_len, word_len_cap)]
-        
         max_len1 = max(word_len)
         max_len2 = max(word_len_cap)
         max_total = max(total_len)
+
         # mask矩阵是相对于word token的  key_padding_mask for computing the importance of each word in txt_encoder and
         # interaction modules
         mask_batch1 = construct_mask_text(word_len, max_len1)

@@ -16,8 +16,8 @@ class TextDiff(nn.Module):
         self.laynorm1 = nn.LayerNorm(input_size)
         self.laynorm2 = nn.LayerNorm(input_size)
 
-    def forward(self, text, caption, mask):
-        row_text = torch.cat([text,caption], dim=1)
+    def forward(self, text, caption, mask : None):
+        row_text = torch.cat([text, caption], dim=1)
         text = self.multiheadattention(row_text, row_text, row_text, key_padding_mask=mask)[0]
         text = self.laynorm1( text + row_text )
         text1 = text
@@ -260,7 +260,9 @@ class KEHModel_without_know(nn.Module):
                                         key_padding_mask=mask_batch, lam=self.lam)
         caption, caption_saocre = self.txt_encoder(t1=caption, word_seq=caption_seq,
                                 key_padding_mask=cap_mask_batch, lam=self.lam)
-        out = self.transformers(texts, caption, mask_total)
+
+        out = self.transformers(texts, caption, None)
+
         #img_pos, img_neg, txt_pos, txt_neg = self.contrast(imgs=imgs, texts=texts)
         #loss = contrastive_loss(img_pos, img_neg, 0) + contrastive_loss(txt_pos, txt_neg, 0)
         #texts = self.tanh(self.linear_txt(torch.cat([txt_pos, txt_neg], dim=2)))
@@ -278,7 +280,6 @@ class KEHModel_without_know(nn.Module):
             a = self.alignment(t2=texts, v2=imgs, edge_index=txt_edge_index, gnn_mask=gnn_mask, score=score,
                                key_padding_mask=mask_batch, np_mask=np_mask, img_edge_index=img_edge_index,
                                img_edge_attr=img_edge_attr, lam=self.lam)
-
         pv = pv.repeat(1, 2)
 
         y = self.linear1(torch.cat([a * pv], dim=1))
