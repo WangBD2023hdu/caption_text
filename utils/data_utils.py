@@ -150,7 +150,7 @@ class PadCollate_without_know:
         # interaction modules
         mask_batch1 = construct_mask_text(word_len, max_len1)
         mask_batch_cap = construct_mask_text(word_len_cap, max_len2)
-        mask_total = construct_edge_text(total_len, max_total)
+        mask_total = construct_mask_text(total_len, max_total)
 
 
         img_patch_lens = [len(img) for img in xs]
