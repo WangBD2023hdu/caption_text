@@ -21,7 +21,7 @@ class TextDiff(nn.Module):
         text = self.multiheadattention(text, text, text, key_padding_mask=mask)[0]
         text = self.laynorm1( text + textres )
         text1 = text
-        text = self.multiheadattention(text, text, text, key_padding_mask=None)[0]
+        text = self.multiheadattention(text, text, text, key_padding_mask=mask)[0]
         text = self.laynorm2(text+text1)
         return text
 

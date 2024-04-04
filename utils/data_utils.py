@@ -100,7 +100,7 @@ class PadCollate_without_know:
         #说明文本长度
         captions = list(map(lambda t:t[self.caption], batch))
         
-        text_total = twitters+captions
+        text_total = [i+j for i,j in zip(twitters, captions)]
 
         captions = text_total
         token_lens = [len(twitter) for twitter in twitters]
