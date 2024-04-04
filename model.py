@@ -17,12 +17,14 @@ class TextDiff(nn.Module):
         self.laynorm2 = nn.LayerNorm(input_size)
 
     def forward(self, text, mask : None):
+        text = text.permute(1, 0, 2)
         textres = text
         text = self.multiheadattention(text, text, text, key_padding_mask=mask)[0]
         text = self.laynorm1( text + textres )
         text1 = text
-        text = self.multiheadattention(text, text, text, key_padding_mask=None)[0]
+        text = self.multiheadattention(text, text, text, key_padding_mask=mask)[0]
         text = self.laynorm2(text+text1)
+        text = text.permute(1, 0, 2)
         return text
 
 class Alignment(nn.Module):
@@ -260,7 +262,6 @@ class KEHModel_without_know(nn.Module):
                                         key_padding_mask=mask_batch, lam=self.lam)
         caption, caption_saocre = self.txt_encoder(t1=caption, word_seq=caption_seq,
                                 key_padding_mask=cap_mask_batch, lam=self.lam)
-
         out = self.transformers(caption, cap_mask_batch)
 
         #img_pos, img_neg, txt_pos, txt_neg = self.contrast(imgs=imgs, texts=texts)
