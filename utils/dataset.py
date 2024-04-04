@@ -47,41 +47,18 @@ class BaseSet(Dataset):
         sample = self.dataset[index]
 
         # for val and test dataset, the sample[2] is hashtag label
-        if self.type == "train":
-            label = sample[2]
-            text = sample[3]
-        else:
-            # label =sample[2] hashtag label
-            label = sample[3]
-            text = sample[4]
-        # useless in this project
-        if self.use_np:
-            twitter = text["chunk_cap"]
-            dep = text["chunk_dep"]
-            chunk_index = text["chunk_index"]
-        else:
-            twitter = text["token_cap"]
-            dep = text["token_dep"]
-        # if self.type == "train":
-        #     #img = torch.load(os.path.join("/home/wbd/source_code/HKEmodel/twitter/img_emb/img_split", f"{index}.pt"))
-        #     img = torch.ones(49, 768)
-        # else:
-        #     #img = self.img_set[index]
-        #     img = torch.ones(49, 768)
+
+        label = sample[2]
+        text = sample[5]
+
+        twitter = text["token_cap"]
+        dep = text["token_dep"]
+        caption = sample[4].split(' ')
         img = self.img_set[index]
-        if self.knowledge == 0:
-            return img, twitter, dep, label
 
-        knowledge = sample[-self.knowledge]
-        # caption
-        if self.knowledge == 1:
-            knowledge_token = knowledge["token_cap"]
-            knowledge_dep = knowledge["token_dep"]
-        else:
-            knowledge_token = knowledge
-            knowledge_dep = []
+        return img, twitter, dep, caption, label
 
-        return img, twitter, dep, label, knowledge_token, knowledge_dep
+
 
     def __len__(self):
         """

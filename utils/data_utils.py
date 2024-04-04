@@ -51,7 +51,7 @@ def pad_tensor(vec, pad, dim):
 
 
 class PadCollate_without_know:
-    def __init__(self, img_dim=0, twitter_dim=1, dep_dim=2, label_dim=3, chunk_dim=4, use_np=False):
+    def __init__(self, img_dim=0, twitter_dim=1, dep_dim=2, caption=3, label_dim=4, chunk_dim=4, use_np=False):
         """
         Args:
             img_dim (int): dimension for the image bounding boxes
@@ -64,6 +64,7 @@ class PadCollate_without_know:
         self.twitter = twitter_dim
         self.dep = dep_dim
         self.label_dim = label_dim
+        self.caption = caption
         self.chunk = chunk_dim
 
         self.use_np = use_np
@@ -93,15 +94,24 @@ class PadCollate_without_know:
         xs = list(map(lambda t: t[self.img_dim].clone().detach(), batch))
         xs = torch.stack(xs)
         # 获取batch中 token caption 的最大长度
+        # 获取总的文本长度
+        text_total = twitters+captions
+        twitters = list(map(lambda t: t[self.twitter]), batch)
+        #说明文本长度
+        captions = list(map(lambda t:t[self.caption]), batch)
+        
 
-        twitters = list(map(lambda t: t[self.twitter], batch))
         token_lens = [len(twitter) for twitter in twitters]
+        caption_lens = [len(caption) for caption in captions]
+        len_total = [len(words) for words in text_total]
 
         encoded_cap = self.tokenizer(twitters, is_split_into_words=True, return_tensors="pt", truncation=True,
                                      max_length=100, padding=True)
+        caption_cap = self.tokenizer(captions, is_split_into_words=True, return_tensors="pt", truncation=True,
+                                     max_length=100, padding=True)   
 
-        # TODO 上服务器运行错误需检查该段代码
-        # 无错误版本
+        
+        # 生成原文本掩码
         word_spans = []
         word_len = []
         for index_encode, len_token in enumerate(token_lens):
@@ -114,27 +124,33 @@ class PadCollate_without_know:
             word_spans.append(word_span_)
             word_len.append(len(word_span_))
 
-        # TODO 上服务器运行错误需检查该段代码
-        # word_spans = []
-        # word_len = []
-        # print(len(twitters))
-        # print(twitters[2])
-        # for idx in range(len(twitters)):
-        #     word_span_ = []
-        #     i = 0
-        #     for word in twitters[idx]:
-        #         tokens = self.tokenizer(word)['input_ids']
-        #         if len(tokens) <= 2:
-        #             continue
-        #         word_span_.append((i, i + len(tokens) - 2))
-        #         i = i + len(tokens) - 2
-        #     word_spans.append(word_span_)
-        #     word_len.append(len(word_span_))
+        # 生成说明文本掩码
+        word_spans_cap = []
+        word_len_cap = []
+        for index_encode, len_token in enumerate(caption_lens):
+            word_span_ = []
+            for i in range(len_token):
+                word_span = caption_cap[index_encode].word_to_tokens(i)
+                if word_span is not None:
+                    # delete [CLS]
+                    word_span_.append([word_span[0] - 1, word_span[1] - 1])
+            word_spans_cap.append(word_span_)
+            word_len_cap.append(len(word_span_))
 
+        ## 生成总掩码
+        #word_len_cap
+        #word_len
+        total_len = [i+j for i,j in zip(word_len, word_len_cap)]
+        
         max_len1 = max(word_len)
+        max_len2 = max(word_len_cap)
+        max_total = max(total_len)
         # mask矩阵是相对于word token的  key_padding_mask for computing the importance of each word in txt_encoder and
         # interaction modules
         mask_batch1 = construct_mask_text(word_len, max_len1)
+        mask_batch_cap = construct_mask_text(word_len_cap, max_len2)
+        mask_total = construct_edge_text(total_len, max_total)
+
 
         img_patch_lens = [len(img) for img in xs]
         max_len_img = max(img_patch_lens)
@@ -158,7 +174,7 @@ class PadCollate_without_know:
 
         # for image graph
         # attr_img = construct_edge_attr()
-        return xs, encoded_cap, word_spans, word_len, mask_batch1, edge_cap1, gnn_mask_1, np_mask_1, labels, mask_batch_img
+        return xs, encoded_cap, caption_cap, word_spans, word_spans_cap, word_len, word_len_cap, mask_batch1, mask_batch_cap, mask_total, edge_cap1, gnn_mask_1, np_mask_1, labels, mask_batch_img
 
     def __call__(self, batch):
         return self.pad_collate(batch)

@@ -8,6 +8,23 @@ import utils.gat as tg_conv
 import torch.nn.functional as F
 
 
+class TextDiff(nn.Module):
+    def __init__(self,input_size=300, dropout=0):
+        super(TextDiff, self).__init__()
+        self.multiheadattention = nn.MultiheadAttention(embed_dim=input_size, num_heads=5, dropout=dropout)
+        self.multiheadattention1 = nn.MultiheadAttention(embed_dim=input_size, num_heads=5, dropout=dropout)
+        self.laynorm1 = nn.LayerNorm(input_size)
+        self.laynorm2 = nn.LayerNorm(input_size)
+
+    def forward(self, text, caption, mask):
+        row_text = torch.cat([text,caption], dim=1)
+        text = self.multiheadattention(row_text, row_text, row_text, key_padding_mask=mask)[0]
+        text = self.laynorm1( text + row_text )
+        text1 = text
+        text = self.multiheadattention(text, text, text, key_padding_mask=mask)[0]
+        text = self.laynorm2(text+text1)
+        return text
+
 class Alignment(nn.Module):
     def __init__(self, input_size=300, txt_gat_layer=2, txt_gat_drop=0.2, txt_gat_head=5, txt_self_loops=False,
                  img_gat_layer=2, img_gat_drop=0.2, img_gat_head=5, img_self_loops=False, is_knowledge=0):
@@ -57,7 +74,7 @@ class Alignment(nn.Module):
 
         Args:
             v2: (N,K,D)
-            t2:(N,L,D)
+            t2: (N,L,D)
             edge_index: (N,2)
             gnn_mask:(N). Tensor on gpu. If ture, the graph is masked.
             score: (N,L,D). The importance of each word or np. Computed by text encoder
@@ -74,7 +91,7 @@ class Alignment(nn.Module):
         pa_token = self.linear1(t2).squeeze().masked_fill_(key_padding_mask, float("-Inf"))
 
         tnp = t2
-        # for node with out edge, it representation will be zero-vector
+        # for node without edge, it representation will be zero-vector
         for gat in self.txt_conv:
             tnp = self.norm(torch.stack(
                 [(self.relu1(gat(data[0], data[1].cuda(), mask=data[2]))) for data in zip(tnp, edge_index, gnn_mask)]))
@@ -198,6 +215,9 @@ class KEHModel_without_know(nn.Module):
 
         self.img_encoder = ImageEncoder(input_dim=self.img_input_dim, inter_dim=self.img_inter_dim,
                                         output_dim=self.img_out_dim)
+        
+
+        self.transformers = TextDiff(self.txt_out_size, self.cro_drop)
 
         self.interaction = CroModality(input_size=self.img_out_dim, nhead=self.cro_heads,
                                        dim_feedforward=2 * self.img_out_dim,
@@ -215,7 +235,7 @@ class KEHModel_without_know(nn.Module):
         self.lam = lam
         self.visulization = visualization
 
-    def forward(self, imgs, texts, mask_batch, img_edge_index, t1_word_seq, txt_edge_index,
+    def forward(self, imgs, texts, caption, mask_batch, cap_mask_batch, mask_total, img_edge_index, t1_word_seq, caption_seq,txt_edge_index,
                 gnn_mask, np_mask, img_edge_attr=None, key_padding_mask_img=None):
         """
         Computes the forward pass of the network
@@ -235,8 +255,12 @@ class KEHModel_without_know(nn.Module):
             y: (N, 2) the similarity score of original caption and image.
         """
         imgs, pv = self.img_encoder(imgs, lam=self.lam)
+
         texts, score = self.txt_encoder(t1=texts, word_seq=t1_word_seq,
                                         key_padding_mask=mask_batch, lam=self.lam)
+        caption, caption_saocre = self.txt_encoder(t1=caption, word_seq=caption_seq,
+                                key_padding_mask=cap_mask_batch, lam=self.lam)
+        out = self.transformers(texts, caption, mask_total)
         #img_pos, img_neg, txt_pos, txt_neg = self.contrast(imgs=imgs, texts=texts)
         #loss = contrastive_loss(img_pos, img_neg, 0) + contrastive_loss(txt_pos, txt_neg, 0)
         #texts = self.tanh(self.linear_txt(torch.cat([txt_pos, txt_neg], dim=2)))
