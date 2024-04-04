@@ -95,11 +95,12 @@ class PadCollate_without_know:
         xs = torch.stack(xs)
         # 获取batch中 token caption 的最大长度
         # 获取总的文本长度
-        text_total = twitters+captions
-        twitters = list(map(lambda t: t[self.twitter]), batch)
+        
+        twitters = list(map(lambda t:t[self.twitter]), batch)
         #说明文本长度
         captions = list(map(lambda t:t[self.caption]), batch)
         
+        text_total = twitters+captions
 
         token_lens = [len(twitter) for twitter in twitters]
         caption_lens = [len(caption) for caption in captions]
