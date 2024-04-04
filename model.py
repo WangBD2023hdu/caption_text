@@ -237,10 +237,10 @@ class KEHModel_without_know(nn.Module):
         imgs, pv = self.img_encoder(imgs, lam=self.lam)
         texts, score = self.txt_encoder(t1=texts, word_seq=t1_word_seq,
                                         key_padding_mask=mask_batch, lam=self.lam)
-        img_pos, img_neg, txt_pos, txt_neg = self.contrast(imgs=imgs, texts=texts)
-        loss = contrastive_loss(img_pos, img_neg, 0) + contrastive_loss(txt_pos, txt_neg, 0)
-        texts = self.tanh(self.linear_txt(torch.cat([txt_pos, txt_neg], dim=2)))
-        imgs = self.tanh(self.linear_img(torch.cat([img_pos, img_neg], dim=2)))
+        #img_pos, img_neg, txt_pos, txt_neg = self.contrast(imgs=imgs, texts=texts)
+        #loss = contrastive_loss(img_pos, img_neg, 0) + contrastive_loss(txt_pos, txt_neg, 0)
+        #texts = self.tanh(self.linear_txt(torch.cat([txt_pos, txt_neg], dim=2)))
+        #imgs = self.tanh(self.linear_img(torch.cat([img_pos, img_neg], dim=2)))
 
         imgs, texts = self.interaction(images=imgs, texts=texts, key_padding_mask=mask_batch,
                                        key_padding_mask_img=key_padding_mask_img)
@@ -262,7 +262,7 @@ class KEHModel_without_know(nn.Module):
         if self.visulization:
             return y, a, pv
         else:
-            return y, loss
+            return y, 0
 
 
 

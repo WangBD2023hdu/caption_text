@@ -25,14 +25,14 @@
 
   "cro_layers" : 10,
   "cro_heads" : 5,
-  "cro_drop" : 0.1,
+  "cro_drop" : 0.3,
 
   "txt_gat_layer" : 3,
-  "txt_gat_drop" : 0.1,
+  "txt_gat_drop" : 0.3,
   "txt_gat_head" : 4,
   "txt_self_loops" : true,
   "img_gat_layer" : 3,
-  "img_gat_drop" : 0.1,
+  "img_gat_drop" : 0.3,
   "img_gat_head" : 4,
   "img_self_loops" : true,
   "img_edge_dim" : 0,
