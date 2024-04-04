@@ -47,13 +47,17 @@ class BaseSet(Dataset):
         sample = self.dataset[index]
 
         # for val and test dataset, the sample[2] is hashtag label
+        if self.type=='train':
+            text = sample[4]
+            caption = sample[3].split(' ')
+        else:
+            text = sample[5]
+            caption = sample[4].split(' ')
 
         label = sample[2]
-        text = sample[5]
-
         twitter = text["token_cap"]
         dep = text["token_dep"]
-        caption = sample[4].split(' ')
+        
         img = self.img_set[index]
 
         return img, twitter, dep, caption, label
