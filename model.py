@@ -206,7 +206,7 @@ class KEHModel_without_know(nn.Module):
 
         self.img_patch = img_patch
         # 对比学习然后融合
-        self.contrast = ContrastKnow(txt_input_dim=self.txt_out_size, img_input_dim=self.img_out_dim)
+        #self.contrast = ContrastKnow(txt_input_dim=self.txt_out_size, img_input_dim=self.img_out_dim)
         # 融合
         self.tanh = nn.Tanh()
         self.linear_txt = nn.Linear(2 * self.txt_out_size, self.txt_out_size)
@@ -220,6 +220,7 @@ class KEHModel_without_know(nn.Module):
         
 
         self.transformers = TextDiff(self.txt_out_size, self.cro_drop)
+        self.gru = nn.GRU(input_size=self.txt_out_size, hidden_size=2 * self.img_patch, num_layers=1, batch_first=True, dropout=self.cro_drop)
 
         self.interaction = CroModality(input_size=self.img_out_dim, nhead=self.cro_heads,
                                        dim_feedforward=2 * self.img_out_dim,
@@ -232,7 +233,7 @@ class KEHModel_without_know(nn.Module):
                                    img_self_loops=self.img_self_loops,
                                    is_knowledge=0)
 
-        self.linear1 = nn.Linear(in_features=2 * self.img_patch, out_features=2)
+        self.linear1 = nn.Linear(in_features=4 * self.img_patch, out_features=2)
 
         self.lam = lam
         self.visulization = visualization
@@ -263,6 +264,10 @@ class KEHModel_without_know(nn.Module):
         caption, caption_saocre = self.txt_encoder(t1=caption, word_seq=caption_seq,
                                 key_padding_mask=cap_mask_batch, lam=self.lam)
         out = self.transformers(caption, cap_mask_batch)
+        # print(out.size())
+        _, predict = self.gru(out)
+        predict = predict.permute(1, 0, 2).squeeze()
+        # print(predict.size())
 
         #img_pos, img_neg, txt_pos, txt_neg = self.contrast(imgs=imgs, texts=texts)
         #loss = contrastive_loss(img_pos, img_neg, 0) + contrastive_loss(txt_pos, txt_neg, 0)
@@ -283,7 +288,7 @@ class KEHModel_without_know(nn.Module):
                                img_edge_attr=img_edge_attr, lam=self.lam)
         pv = pv.repeat(1, 2)
 
-        y = self.linear1(torch.cat([a * pv], dim=1))
+        y = self.linear1(torch.cat([predict ,a * pv], dim=1))
 
         if self.visulization:
             return y, a, pv
