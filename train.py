@@ -141,8 +141,9 @@ model.to(device=device)
 optimizer = optim.Adam(params=model.parameters(), lr=parameter["lr"], betas=(0.9, 0.999), eps=1e-8,
                        weight_decay=parameter["weight_decay"],
                        amsgrad=True)
+#optimizer = optim.SGD(params=model.parameters(), lr=parameter["lr"], weight_decay=0.001)
 scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=parameter["patience"], verbose=True)
-# optimizer = optim.Adam(params=model.parameters(), lr=parameter["lr"], betas=(0.9, 0.999), eps=1e-8, weight_decay=0, amsgrad=True)
+#optimizer = optim.Adam(params=model.parameters(), lr=parameter["lr"], betas=(0.9, 0.999), eps=1e-8, weight_decay=0, amsgrad=True)
 
 cross_entropy_loss = CrossEntropyLoss()
 # cross_entropy_loss = CrossEntropyLoss(weight=torch.tensor([1,1.1]).cuda())
