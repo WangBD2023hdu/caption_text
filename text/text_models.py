@@ -33,8 +33,8 @@ class TextEncoder(nn.Module):
         #self.bert_model = AutoModelForSequenceClassification.from_pretrained('twitter-roberta-base-sentiment-latest')
         self.bert_model = RobertaModel.from_pretrained('twitter-roberta-base-sentiment-latest')
         # self.bert_model = BertModel.from_pretrained("/home/liuhui/lhgpu/sarcasm/bert/")
-        for para in self.bert_model:
-            para.requires_grad = False
+        # for para in self.bert_model:
+        #     para.requires_grad = False
         self.linear2 = nn.Linear(self.input_size, self.out_size)
 
         self.relu1 = nn.ReLU()
@@ -128,8 +128,8 @@ class TextEncoder_without_know(nn.Module):
         self.linear_ = nn.Linear(self.input_size, self.out_size)
         #self.bert_model = AutoModelForSequenceClassification.from_pretrained('twitter-roberta-base-sentiment-latest')
         self.bert_model = RobertaModel.from_pretrained('twitter-roberta-base-sentiment-latest')
-        for para in self.bert_model.parameters():
-            para.requires_grad = False
+        # for para in self.bert_model.parameters():
+        #     para.requires_grad = False
         self.gru = nn.GRU(self.input_size, self.out_size, num_layers=2, batch_first=True, bidirectional=False)
 
     def forward(self, t1, word_seq, key_padding_mask, lam=1):

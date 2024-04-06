@@ -9,22 +9,26 @@ import torch.nn.functional as F
 
 
 class TextDiff(nn.Module):
-    def __init__(self,input_size=300, dropout=0):
+    def __init__(self,input_size=300, dropout=0.0):
         super(TextDiff, self).__init__()
         self.multiheadattention = nn.MultiheadAttention(embed_dim=input_size, num_heads=5, dropout=dropout)
         self.multiheadattention1 = nn.MultiheadAttention(embed_dim=input_size, num_heads=5, dropout=dropout)
-        self.laynorm1 = nn.LayerNorm(input_size)
-        self.laynorm2 = nn.LayerNorm(input_size)
+        self.laynorm1 = nn.LayerNorm(input_size, eps=1e-5)
+        self.laynorm2 = nn.LayerNorm(input_size, eps=1e-5)
+        self.tanh = nn.Tanh()
 
     def forward(self, text, mask : None):
         text = text.permute(1, 0, 2)
         textres = text
         text = self.multiheadattention(text, text, text, key_padding_mask=mask)[0]
-        text = self.laynorm1( text + textres )
-        text1 = text
-        text = self.multiheadattention(text, text, text, key_padding_mask=mask)[0]
-        text = self.laynorm2(text+text1)
+        text = self.laynorm1(text + textres)
         text = text.permute(1, 0, 2)
+        text = self.tanh(text)
+        # text = self.laynorm1( text + textres )
+        # text1 = text
+        # text = self.multiheadattention(text, text, text, key_padding_mask=mask)[0]
+        # text = self.laynorm2(text+text1)
+        # text = text.permute(1, 0, 2)
         return text
 
 class Alignment(nn.Module):
@@ -119,6 +123,7 @@ class Alignment(nn.Module):
 
         return a
 
+
 class ContrastKnow(nn.Module):
 
     def __init__(self, txt_input_dim=768, img_input_dim=768):
@@ -126,6 +131,7 @@ class ContrastKnow(nn.Module):
         self.know_txt = nn.ParameterList([nn.Parameter(torch.randn(txt_input_dim, txt_input_dim)), nn.Parameter(torch.randn(txt_input_dim, txt_input_dim))])
         self.know_imgs = nn.ParameterList([nn.Parameter(torch.randn(img_input_dim, img_input_dim)), nn.Parameter(torch.randn(img_input_dim, img_input_dim))])
         self.tanh = nn.Tanh()
+
     def forward(self, imgs, texts):
         img_pos = torch.matmul(imgs, self.know_imgs[0])
         img_neg = torch.matmul(imgs, self.know_imgs[1])
@@ -161,7 +167,9 @@ def contrastive_loss(embeddings1, embeddings2, labels, margin=1.0):
 
     return loss
 
+
 class KEHModel_without_know(nn.Module):
+
     """
     Our model for Image Repurpose Task
     """
@@ -217,10 +225,11 @@ class KEHModel_without_know(nn.Module):
 
         self.img_encoder = ImageEncoder(input_dim=self.img_input_dim, inter_dim=self.img_inter_dim,
                                         output_dim=self.img_out_dim)
-        
 
         self.transformers = TextDiff(self.txt_out_size, self.cro_drop)
         self.gru = nn.GRU(input_size=self.txt_out_size, hidden_size=2 * self.img_patch, num_layers=1, batch_first=True, dropout=self.cro_drop)
+        self.layernorm = nn.LayerNorm(2 * self.img_patch, eps=1e-5, elementwise_affine=True)
+        self.tanh = nn.Tanh()
 
         self.interaction = CroModality(input_size=self.img_out_dim, nhead=self.cro_heads,
                                        dim_feedforward=2 * self.img_out_dim,
@@ -232,8 +241,9 @@ class KEHModel_without_know(nn.Module):
                                    , img_gat_drop=self.img_gat_drop, img_gat_head=self.img_gat_head,
                                    img_self_loops=self.img_self_loops,
                                    is_knowledge=0)
-
-        self.linear1 = nn.Linear(in_features=4 * self.img_patch, out_features=2)
+        self.linear_t = nn.Linear(in_features=4 * self.img_patch, out_features= 2 * self.img_patch)
+        self.tanh1 = nn.Tanh()
+        self.linear1 = nn.Linear(in_features=2 * self.img_patch, out_features=2)
 
         self.lam = lam
         self.visulization = visualization
@@ -267,6 +277,9 @@ class KEHModel_without_know(nn.Module):
         # print(out.size())
         _, predict = self.gru(out)
         predict = predict.permute(1, 0, 2).squeeze()
+        predict = self.tanh(self.layernorm(predict))
+
+
         # print(predict.size())
 
         #img_pos, img_neg, txt_pos, txt_neg = self.contrast(imgs=imgs, texts=texts)
@@ -288,7 +301,8 @@ class KEHModel_without_know(nn.Module):
                                img_edge_attr=img_edge_attr, lam=self.lam)
         pv = pv.repeat(1, 2)
 
-        y = self.linear1(torch.cat([predict ,a * pv], dim=1))
+        y = self.linear_t(torch.cat([predict ,a * pv], dim=1))
+        y = self.tanh1(self.linear1(y))
 
         if self.visulization:
             return y, a, pv

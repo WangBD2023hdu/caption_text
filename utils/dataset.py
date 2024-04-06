@@ -23,6 +23,15 @@ class BaseSet(Dataset):
         self.use_np = use_np
         with open(self.text_path) as f:
             self.dataset = json.load(f)
+        if self.type == 'train':
+            with open("/home/wbd/source_code/base_roberta_twitter/twitter/dataset_text/traindep.json") as f:
+                self.dataset_train = json.load(f)
+        if self.type == 'val':
+            with open("/home/wbd/source_code/base_roberta_twitter/twitter/dataset_text/valdep.json") as f:
+                self.dataset_val = json.load(f)
+        if self.type == 'test':
+            with open("/home/wbd/source_code/base_roberta_twitter/twitter/dataset_text/testdep.json") as f:
+                self.dataset_test = json.load(f)
         # if self.type != "train":
         self.img_set = torch.load(self.img_path)
         self.knowledge = int(knowledge)
@@ -48,13 +57,21 @@ class BaseSet(Dataset):
 
         # for val and test dataset, the sample[2] is hashtag label
         if self.type=='train':
-            text = sample[4]
+            #text = sample[4]
             caption = sample[3].split(' ')
         else:
-            text = sample[5]
+            #text = sample[5]
             caption = sample[4].split(' ')
 
-        label = sample[2]
+        if self.type == 'train':
+            label = self.dataset_train[index][2]
+            text = self.dataset_train[index][3]
+        elif self.type == 'val':
+            label = self.dataset_val[index][3]
+            text = self.dataset_val[index][4]
+        else:
+            label = self.dataset_test[index][3]
+            text = self.dataset_test[index][4]
         twitter = text["token_cap"]
         dep = text["token_dep"]
         

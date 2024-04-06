@@ -304,7 +304,7 @@ def evaluate_model_test(epoch, test_loader):
             caption_cap = {k: v.to(device) for k, v in caption_cap.items()}
             batch = len(img_batch)
             # TODO
-            with torch.set_grad_enabled(False):
+            with torch.set_grad_enabled(True):
                 y, loss_contra = model(imgs=img_batch.cuda(), texts=embed_batch1, caption=caption_cap, mask_batch=mask_batch1.cuda(),
                             cap_mask_batch=mask_batch_cap.cuda(),img_edge_index=img_edge_index,
                         t1_word_seq=org_seq, caption_seq= cap_seq,txt_edge_index=edge_cap1, gnn_mask=gnn_mask_1.cuda(),
