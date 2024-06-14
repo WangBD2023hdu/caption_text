@@ -9,27 +9,26 @@ import torch.nn.functional as F
 
 
 class TextDiff(nn.Module):
-    def __init__(self,input_size=300, dropout=0.0):
+    def __init__(self, input_size=300, dropout=0):
         super(TextDiff, self).__init__()
         self.multiheadattention = nn.MultiheadAttention(embed_dim=input_size, num_heads=5, dropout=dropout)
         self.multiheadattention1 = nn.MultiheadAttention(embed_dim=input_size, num_heads=5, dropout=dropout)
-        self.laynorm1 = nn.LayerNorm(input_size, eps=1e-5)
-        self.laynorm2 = nn.LayerNorm(input_size, eps=1e-5)
+        self.laynorm1 = nn.LayerNorm(input_size)
+        self.laynorm2 = nn.LayerNorm(input_size)
         self.tanh = nn.Tanh()
+        self.tanh2 = nn.Tanh()
 
     def forward(self, text, mask : None):
         text = text.permute(1, 0, 2)
         textres = text
         text = self.multiheadattention(text, text, text, key_padding_mask=mask)[0]
-        text = self.laynorm1(text + textres)
+        text = self.laynorm1( text + textres )
+        text1 = self.tanh(text)
+        text = self.multiheadattention(text, text, text, key_padding_mask=mask)[0]
+        text = self.tanh2(self.laynorm2(text+text1))
         text = text.permute(1, 0, 2)
-        text = self.tanh(text)
-        # text = self.laynorm1( text + textres )
-        # text1 = text
-        # text = self.multiheadattention(text, text, text, key_padding_mask=mask)[0]
-        # text = self.laynorm2(text+text1)
-        # text = text.permute(1, 0, 2)
         return text
+
 
 class Alignment(nn.Module):
     def __init__(self, input_size=300, txt_gat_layer=2, txt_gat_drop=0.2, txt_gat_head=5, txt_self_loops=False,
@@ -271,13 +270,13 @@ class KEHModel_without_know(nn.Module):
 
         texts, score = self.txt_encoder(t1=texts, word_seq=t1_word_seq,
                                         key_padding_mask=mask_batch, lam=self.lam)
-        caption, caption_saocre = self.txt_encoder(t1=caption, word_seq=caption_seq,
-                                key_padding_mask=cap_mask_batch, lam=self.lam)
-        out = self.transformers(caption, cap_mask_batch)
-        # print(out.size())
-        _, predict = self.gru(out)
-        predict = predict.permute(1, 0, 2).squeeze()
-        predict = self.tanh(self.layernorm(predict))
+        # caption, caption_saocre = self.txt_encoder(t1=caption, word_seq=caption_seq,
+        #                         key_padding_mask=cap_mask_batch, lam=self.lam)
+        # out = self.transformers(caption, cap_mask_batch)
+        # # print(out.size())
+        # _, predict = self.gru(out)
+        # predict = predict.permute(1, 0, 2).squeeze()
+        # predict = self.tanh(self.layernorm(predict))
 
 
         # print(predict.size())
@@ -301,8 +300,9 @@ class KEHModel_without_know(nn.Module):
                                img_edge_attr=img_edge_attr, lam=self.lam)
         pv = pv.repeat(1, 2)
 
-        y = self.linear_t(torch.cat([predict ,a * pv], dim=1))
-        y = self.tanh1(self.linear1(y))
+        # y = self.linear_t(torch.cat([predict ,a * pv], dim=1))
+        # y = self.tanh1(self.linear1(y))
+        y = self.linear1(torch.cat([a * pv], dim=1))
 
         if self.visulization:
             return y, a, pv
