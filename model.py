@@ -221,7 +221,7 @@ class KEHModel_without_know(nn.Module):
         # 对比损失函数
 
         self.txt_encoder = TextEncoder_without_know(input_size=self.txt_input_dim, out_size=self.txt_out_size)
-
+        self.cap_encoder = TextEncoder_without_know(input_size=self.txt_input_dim, out_size=self.txt_out_size)
         self.img_encoder = ImageEncoder(input_dim=self.img_input_dim, inter_dim=self.img_inter_dim,
                                         output_dim=self.img_out_dim)
 
@@ -247,6 +247,12 @@ class KEHModel_without_know(nn.Module):
         self.lam = lam
         self.visulization = visualization
 
+        # cap
+        self.linear3 = nn.Linear(in_features=self.txt_out_size, out_features=1)
+        self.linear4 = nn.Linear(in_features=100, out_features=2)
+
+        self.linear5 = nn.Linear(in_features=4, out_features=2)
+
     def forward(self, imgs, texts, caption, mask_batch, cap_mask_batch, img_edge_index, t1_word_seq, caption_seq,txt_edge_index,
                 gnn_mask, np_mask, img_edge_attr=None, key_padding_mask_img=None):
         """
@@ -270,21 +276,17 @@ class KEHModel_without_know(nn.Module):
 
         texts, score = self.txt_encoder(t1=texts, word_seq=t1_word_seq,
                                         key_padding_mask=mask_batch, lam=self.lam)
-        # caption, caption_saocre = self.txt_encoder(t1=caption, word_seq=caption_seq,
-        #                         key_padding_mask=cap_mask_batch, lam=self.lam)
-        # out = self.transformers(caption, cap_mask_batch)
-        # # print(out.size())
-        # _, predict = self.gru(out)
-        # predict = predict.permute(1, 0, 2).squeeze()
-        # predict = self.tanh(self.layernorm(predict))
+        caption, caption_saocre = self.cap_encoder(t1=caption, word_seq=caption_seq,
+                                 key_padding_mask=cap_mask_batch, lam=self.lam)
+
+        cap = caption_saocre * caption
+        tnp = cap.masked_fill_(cap_mask_batch.unsqueeze(-1).expand_as(cap), 0)
+        tnp = self.linear3(tnp).squeeze()
+        tnp = F.leaky_relu(tnp, 0.2)
+        t = F.pad(tnp, (0, 100-tnp.size(1)), "constant", 0)
+        t = self.linear4(t)
 
 
-        # print(predict.size())
-
-        #img_pos, img_neg, txt_pos, txt_neg = self.contrast(imgs=imgs, texts=texts)
-        #loss = contrastive_loss(img_pos, img_neg, 0) + contrastive_loss(txt_pos, txt_neg, 0)
-        #texts = self.tanh(self.linear_txt(torch.cat([txt_pos, txt_neg], dim=2)))
-        #imgs = self.tanh(self.linear_img(torch.cat([img_pos, img_neg], dim=2)))
 
         imgs, texts = self.interaction(images=imgs, texts=texts, key_padding_mask=mask_batch,
                                        key_padding_mask_img=key_padding_mask_img)
@@ -303,6 +305,9 @@ class KEHModel_without_know(nn.Module):
         # y = self.linear_t(torch.cat([predict ,a * pv], dim=1))
         # y = self.tanh1(self.linear1(y))
         y = self.linear1(torch.cat([a * pv], dim=1))
+
+        # 合并代码
+        y = self.linear5(torch.cat([y, t], dim=1))
 
         if self.visulization:
             return y, a, pv
